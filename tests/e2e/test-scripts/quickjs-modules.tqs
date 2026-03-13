@@ -1,0 +1,35 @@
+// Test QuickJS-specific modules
+import * as std from 'std';
+import * as os from 'os';
+
+console.log("Testing QuickJS modules...");
+
+// Test std module
+try {
+    std.printf("Printf test: %s %d\n", "hello", 42);
+
+    const formatted = std.sprintf("Sprintf test: %s %d", "world", 123);
+    console.log("Formatted string:", formatted);
+} catch (e) {
+    console.log("std module error:", e);
+}
+
+// Test os module
+try {
+    const cwd = os.getcwd();
+    console.log("Current working directory:", cwd);
+
+    console.log("Platform:", os.platform);
+
+    // Test readdir (should work in container)
+    const files = os.readdir('.');
+    console.log("Files in current directory:", files.length, "files");
+
+} catch (e) {
+    console.log("os module error:", e);
+}
+
+console.log("QuickJS modules test completed!");
+
+// Exit cleanly
+std.exit(0);

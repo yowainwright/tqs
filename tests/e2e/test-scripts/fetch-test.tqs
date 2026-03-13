@@ -1,0 +1,48 @@
+// Test maybefetch functionality
+console.log("Testing maybefetch...");
+
+// Test successful fetch
+const response = maybefetch(
+    'https://httpbin.org/json',
+    3,      // maxRetries
+    1000,   // initialDelayMs
+    30000,  // maxDelayMs
+    2.0,    // backoffFactor
+    10000   // timeoutMs
+);
+
+if (response) {
+    console.log("Fetch successful!");
+
+    try {
+        const data = JSON.parse(response);
+        console.log("Parsed JSON data:", typeof data);
+
+        if (data && typeof data === 'object') {
+            console.log("Response contains valid JSON object");
+        }
+    } catch (e) {
+        console.log("Response is not valid JSON, but fetch succeeded");
+    }
+} else {
+    console.log("Fetch failed - this might be expected in test environment");
+}
+
+// Test failed fetch (should return null)
+console.log("Testing failed fetch...");
+const failedResponse = maybefetch(
+    'https://invalid-domain-that-should-not-exist.com',
+    1,      // maxRetries (minimal for quick test)
+    100,    // initialDelayMs
+    1000,   // maxDelayMs
+    1.5,    // backoffFactor
+    1000    // timeoutMs (short timeout)
+);
+
+if (failedResponse === null) {
+    console.log("Failed fetch correctly returned null");
+} else {
+    console.log("Unexpected: failed fetch returned data");
+}
+
+console.log("Fetch test completed!");
