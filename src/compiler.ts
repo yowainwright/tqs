@@ -59,8 +59,9 @@ const createOutputPath = (inputPath: string): string => {
     : inputPath.replace(/\.ts$/, '.js');
 };
 
-const buildTypeScriptCommand = (inputFile: string, _outputFile: string, includeQuickJSTypes: boolean): string => {
-  const baseCmd = 'npx tsc --target es2020 --module commonjs --outDir . --lib ES2020';
+const buildTypeScriptCommand = (inputFile: string, outputFile: string, includeQuickJSTypes: boolean): string => {
+  const outDir = path.dirname(path.resolve(outputFile));
+  const baseCmd = `npx tsc --target es2020 --module commonjs --outDir ${outDir} --lib ES2020`;
 
   if (includeQuickJSTypes) {
     const typesDir = path.dirname(getGlobalTypesPath());

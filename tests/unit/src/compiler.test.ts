@@ -28,7 +28,7 @@ describe('compiler', () => {
       compileAndRun(fixture);
     } catch (err) {
       const message = (err as Error).message;
-      expect(message).not.toContain('not marked for QuickJS execution');
+      if (message.includes('not marked for QuickJS execution')) throw err;
     }
   });
 
@@ -38,7 +38,7 @@ describe('compiler', () => {
       compileAndRun(fixture);
     } catch (err) {
       const message = (err as Error).message;
-      expect(message).not.toContain('not marked for QuickJS execution');
+      if (message.includes('not marked for QuickJS execution')) throw err;
     }
   });
 
@@ -51,7 +51,7 @@ describe('compiler', () => {
       compileAndRun(dirFixture);
     } catch (err) {
       const message = (err as Error).message;
-      expect(message).not.toContain('not marked for QuickJS execution');
+      if (message.includes('not marked for QuickJS execution')) throw err;
     }
   });
 });

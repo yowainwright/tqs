@@ -29,9 +29,7 @@ export const main = (): void => {
   }
 };
 
-const isEntryPoint =
-  import.meta.url === `file://${process.argv[1]}` ||
-  process.argv[1]?.endsWith('/cli/index.ts') === true;
+const isEntryPoint = import.meta.url === `file://${process.argv[1]}`;
 
 if (isEntryPoint) {
   try {

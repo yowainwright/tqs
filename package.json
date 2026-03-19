@@ -14,7 +14,7 @@
     "dev": "tsup --watch",
     "start": "node ./dist/cli.js",
     "lint": "oxlint src",
-    "format": "oxlint --fix src",
+    "lint:fix": "oxlint --fix src",
     "typecheck": "tsc --noEmit",
     "test": "bun test",
     "prepare": "npm run build"

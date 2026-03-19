@@ -45,35 +45,26 @@ describe('CLI Integration', () => {
 
   it('should reject unmarked file with helpful error', () => {
     const unmarked = path.join(FIXTURES_DIR, 'unmarked.ts');
-
-    try {
-      run(unmarked);
-    } catch (error) {
-      const stderr = (error as { stderr?: string }).stderr ?? '';
-      const message = stderr + (error as Error).message;
-      expect(message).toContain('not marked for QuickJS execution');
-    }
+    expect(() => run(unmarked)).toThrow('not marked for QuickJS execution');
   });
 
   it('should accept .tqs extension', () => {
     const fixture = path.join(FIXTURES_DIR, 'tqs-extension.tqs');
-
     try {
       run(fixture);
-    } catch (error) {
-      const message = (error as Error).message;
-      expect(message).not.toContain('not marked for QuickJS execution');
+    } catch (err) {
+      const message = (err as Error).message;
+      if (message.includes('not marked for QuickJS execution')) throw err;
     }
   });
 
   it('should accept @tqs-script comment', () => {
     const fixture = path.join(FIXTURES_DIR, 'tqs-comment.ts');
-
     try {
       run(fixture);
-    } catch (error) {
-      const message = (error as Error).message;
-      expect(message).not.toContain('not marked for QuickJS execution');
+    } catch (err) {
+      const message = (err as Error).message;
+      if (message.includes('not marked for QuickJS execution')) throw err;
     }
   });
 
@@ -84,9 +75,9 @@ describe('CLI Integration', () => {
 
     try {
       run(dirFixture);
-    } catch (error) {
-      const message = (error as Error).message;
-      expect(message).not.toContain('not marked for QuickJS execution');
+    } catch (err) {
+      const message = (err as Error).message;
+      if (message.includes('not marked for QuickJS execution')) throw err;
     }
   });
 });
