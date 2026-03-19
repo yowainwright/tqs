@@ -141,6 +141,8 @@ vite.config.ts.timestamp-*
 CLAUDE.md
 .beads/
 /tmp
+test-files/
+integration-test-files/
 dist/
 build/
 bin/

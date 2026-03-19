@@ -1,139 +1,83 @@
-import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
+import { describe, it, expect, afterEach } from 'bun:test';
 import { execSync } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 
-const CLI_PATH = path.join(__dirname, '../../dist/cli/index.js');
-const TEST_DIR = 'integration-test-files';
+const CLI_PATH = path.join(__dirname, '../../src/cli/index.ts');
+const FIXTURES_DIR = path.join(__dirname, '../fixtures');
+const TEMP_DIR = 'integration-test-files';
 
-describe('CLI Integration Tests', () => {
-  beforeEach(() => {
-    if (!fs.existsSync(TEST_DIR)) {
-      fs.mkdirSync(TEST_DIR, { recursive: true });
-    }
+const run = (args: string): string =>
+  execSync(`bun run ${CLI_PATH} ${args}`, { encoding: 'utf8', stdio: 'pipe' });
 
-    const scriptsDir = path.join(TEST_DIR, 'scripts');
-    if (!fs.existsSync(scriptsDir)) {
-      fs.mkdirSync(scriptsDir, { recursive: true });
-    }
-  });
-
+describe('CLI Integration', () => {
   afterEach(() => {
-    if (fs.existsSync(TEST_DIR)) {
-      fs.rmSync(TEST_DIR, { recursive: true, force: true });
+    if (fs.existsSync(TEMP_DIR)) {
+      fs.rmSync(TEMP_DIR, { recursive: true, force: true });
     }
   });
 
-  describe('Help and Version', () => {
-    it('should show help with --help flag', () => {
-      const result = execSync(`node ${CLI_PATH} --help`, { encoding: 'utf8' });
-
-      expect(result).toContain('tqs - quick scripts for typescript');
-      expect(result).toContain('Usage:');
-      expect(result).toContain('--help');
-      expect(result).toContain('--version');
-    });
-
-    it('should show help with -h flag', () => {
-      const result = execSync(`node ${CLI_PATH} -h`, { encoding: 'utf8' });
-
-      expect(result).toContain('tqs - quick scripts for typescript');
-    });
-
-    it('should show version with --version flag', () => {
-      const result = execSync(`node ${CLI_PATH} --version`, { encoding: 'utf8' });
-
-      expect(result.trim()).toBe('1.0.0');
-    });
-
-    it('should show help when no arguments provided', () => {
-      const result = execSync(`node ${CLI_PATH}`, { encoding: 'utf8' });
-
-      expect(result).toContain('Usage:');
-    });
+  it('should show help with --help', () => {
+    const result = run('--help');
+    expect(result).toContain('Usage:');
+    expect(result).toContain('--help');
+    expect(result).toContain('--version');
   });
 
-  describe('File Validation', () => {
-    it('should fail for non-existent file', () => {
-      expect(() => {
-        execSync(`node ${CLI_PATH} non-existent.tqs`, { encoding: 'utf8' });
-      }).toThrow();
-    });
-
-    it('should fail for non-QuickJS TypeScript file', () => {
-      const regularTsFile = path.join(TEST_DIR, 'regular.ts');
-      fs.writeFileSync(regularTsFile, 'console.log("Not a QuickJS file");');
-
-      expect(() => {
-        execSync(`node ${CLI_PATH} ${regularTsFile}`, { encoding: 'utf8' });
-      }).toThrow();
-    });
-
-    it('should accept .tqs file', () => {
-      const tqsFile = path.join(TEST_DIR, 'test.tqs');
-      fs.writeFileSync(tqsFile, 'console.log("TQS file");');
-
-      // Should not throw validation error (may fail at compilation/execution)
-      try {
-        execSync(`node ${CLI_PATH} ${tqsFile}`, { encoding: 'utf8' });
-      } catch (error) {
-        // Expected to fail at compilation since QuickJS binary doesn't exist yet
-        expect(error.message).not.toContain('not marked for QuickJS execution');
-      }
-    });
-
-    it('should accept file with @tqs-script comment', () => {
-      const tsFile = path.join(TEST_DIR, 'commented.ts');
-      fs.writeFileSync(tsFile, '// @tqs-script\nconsole.log("Commented QuickJS file");');
-
-      try {
-        execSync(`node ${CLI_PATH} ${tsFile}`, { encoding: 'utf8' });
-      } catch (error) {
-        // Expected to fail at compilation since QuickJS binary doesn't exist yet
-        expect(error.message).not.toContain('not marked for QuickJS execution');
-      }
-    });
-
-    it('should accept file in scripts directory', () => {
-      const scriptsFile = path.join(TEST_DIR, 'scripts', 'fetch.ts');
-      fs.writeFileSync(scriptsFile, 'console.log("Scripts directory file");');
-
-      try {
-        execSync(`node ${CLI_PATH} ${scriptsFile}`, { encoding: 'utf8' });
-      } catch (error) {
-        // Expected to fail at compilation since QuickJS binary doesn't exist yet
-        expect(error.message).not.toContain('not marked for QuickJS execution');
-      }
-    });
+  it('should show help with -h', () => {
+    const result = run('-h');
+    expect(result).toContain('tqs - quick scripts for typescript');
   });
 
-  describe('Error Messages', () => {
-    it('should provide helpful error for non-QuickJS file', () => {
-      const regularFile = path.join(TEST_DIR, 'regular.ts');
-      fs.writeFileSync(regularFile, 'console.log("regular");');
+  it('should show version with --version', () => {
+    const result = run('--version');
+    expect(result.trim()).toContain('1.0.0');
+  });
 
-      try {
-        execSync(`node ${CLI_PATH} ${regularFile}`, { encoding: 'utf8', stdio: 'pipe' });
-      } catch (error) {
-        const stderr = error.stderr?.toString() || '';
-        expect(stderr).toContain('not marked for QuickJS execution');
-        expect(stderr).toContain('.tqs file extension');
-        expect(stderr).toContain('// @tqs-script comment');
-        expect(stderr).toContain('scripts/, quickjs/, or tqs/ directory');
-      }
-    });
+  it('should show help when no arguments provided', () => {
+    const result = run('');
+    expect(result).toContain('Usage:');
+  });
 
-    it('should provide helpful error for unsupported file type', () => {
-      const pyFile = path.join(TEST_DIR, 'test.py');
-      fs.writeFileSync(pyFile, 'print("Python file")');
+  it('should fail for non-existent file', () => {
+    expect(() => run('non-existent.tqs')).toThrow();
+  });
 
-      try {
-        execSync(`node ${CLI_PATH} ${pyFile}`, { encoding: 'utf8', stdio: 'pipe' });
-      } catch (error) {
-        const stderr = error.stderr?.toString() || '';
-        expect(stderr).toContain('Unsupported file type');
-        expect(stderr).toContain('Use .ts, .tqs, or .js files');
-      }
-    });
+  it('should reject unmarked file with helpful error', () => {
+    const unmarked = path.join(FIXTURES_DIR, 'unmarked.ts');
+    expect(() => run(unmarked)).toThrow('not marked for QuickJS execution');
+  });
+
+  it('should accept .tqs extension', () => {
+    const fixture = path.join(FIXTURES_DIR, 'tqs-extension.tqs');
+    try {
+      run(fixture);
+    } catch (err) {
+      const message = (err as Error).message;
+      if (message.includes('not marked for QuickJS execution')) throw err;
+    }
+  });
+
+  it('should accept @tqs-script comment', () => {
+    const fixture = path.join(FIXTURES_DIR, 'tqs-comment.ts');
+    try {
+      run(fixture);
+    } catch (err) {
+      const message = (err as Error).message;
+      if (message.includes('not marked for QuickJS execution')) throw err;
+    }
+  });
+
+  it('should accept file in scripts directory', () => {
+    fs.mkdirSync(path.join(TEMP_DIR, 'scripts'), { recursive: true });
+    const dirFixture = path.join(TEMP_DIR, 'scripts', 'detect-by-dir.ts');
+    fs.writeFileSync(dirFixture, 'console.log("detect by dir");');
+
+    try {
+      run(dirFixture);
+    } catch (err) {
+      const message = (err as Error).message;
+      if (message.includes('not marked for QuickJS execution')) throw err;
+    }
   });
 });

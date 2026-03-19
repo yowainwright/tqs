@@ -1,18 +1,18 @@
-import { EXIT_SUCCESS } from '../constants.js';
+import { EXIT_SUCCESS, EXIT_FAILURE } from '../constants.js';
 import { parseArgs } from './args.js';
 import { showHelp } from './help.js';
 import { showVersion } from './version.js';
 import { compileAndRun } from '../compiler.js';
+import { logger } from '../logger.js';
 
-const shouldShowHelp = (args: string[], helpFlag: boolean): boolean => {
-  return helpFlag || args.length === 0;
-};
+const shouldShowHelp = (args: readonly string[], helpFlag: boolean): boolean =>
+  helpFlag || args.length === 0;
 
 export const main = (): void => {
   const args = process.argv.slice(2);
   const options = parseArgs(args);
 
-  const needsHelp = shouldShowHelp(args, options.help);
+  const needsHelp = shouldShowHelp(args, options.help ?? false);
 
   if (options.version) {
     showVersion();
@@ -26,11 +26,18 @@ export const main = (): void => {
 
   if (options.scriptFile) {
     compileAndRun(options.scriptFile);
-    return;
   }
 };
 
-if (import.meta.url === `file://${process.argv[1]}`) {
-  main();
-  process.exit(EXIT_SUCCESS);
+const isEntryPoint = import.meta.url === `file://${process.argv[1]}`;
+
+if (isEntryPoint) {
+  try {
+    main();
+    process.exit(EXIT_SUCCESS);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    logger.error(message);
+    process.exit(EXIT_FAILURE);
+  }
 }

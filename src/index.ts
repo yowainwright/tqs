@@ -1,5 +1,6 @@
 export type {
   FetchConfig,
+  NativeBinding,
   QuickJSStd,
   QuickJSOS,
   Logger,
