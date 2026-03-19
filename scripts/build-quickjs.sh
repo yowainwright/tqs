@@ -3,100 +3,159 @@ set -e
 
 QUICKJS_DIR="quickjs-ng"
 QUICKJS_REPO="https://github.com/quickjs-ng/quickjs.git"
+BUILD_DIR="$QUICKJS_DIR/build"
+ROOT_DIR="$(pwd)"
 
 echo "Building QuickJS-NG with maybefetch extension..."
 
-# Clone QuickJS-NG if not exists
 if [ ! -d "$QUICKJS_DIR" ]; then
     echo "Cloning QuickJS-NG..."
     git clone --depth=1 "$QUICKJS_REPO" "$QUICKJS_DIR"
 fi
 
-# Copy our C files to QuickJS directory
-echo "Adding maybefetch extension..."
-cp native/src/maybefetch.c "$QUICKJS_DIR/"
-cp native/src/quickjs_maybefetch.c "$QUICKJS_DIR/"
+rm -rf "$BUILD_DIR"
+
+echo "Copying maybefetch sources..."
 cp native/include/maybefetch.h "$QUICKJS_DIR/"
 
-# Create modified qjs.c that includes maybefetch
-cat > "$QUICKJS_DIR/qjs_with_maybefetch.c" << 'EOF'
-/*
- * QuickJS command line compiler and interpreter with maybefetch
- */
+sed 's|"../include/maybefetch.h"|"maybefetch.h"|' native/src/maybefetch.c > "$QUICKJS_DIR/maybefetch.c"
+sed 's|"../include/maybefetch.h"|"maybefetch.h"|' native/src/quickjs_maybefetch.c > "$QUICKJS_DIR/quickjs_maybefetch.c"
+
+cat > "$QUICKJS_DIR/tqs_main.c" << 'MAINEOF'
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+
+#include "cutils.h"
+#include "quickjs.h"
 #include "quickjs-libc.h"
 #include "maybefetch.h"
+
+extern void js_std_add_maybefetch(JSContext *ctx);
+
+static int eval_file(JSContext *ctx, const char *filename, int is_module)
+{
+    size_t buf_len;
+    uint8_t *buf = js_load_file(ctx, &buf_len, filename);
+    if (!buf) {
+        fprintf(stderr, "tqs: could not load '%s'\n", filename);
+        return -1;
+    }
+
+    int flags = is_module ? JS_EVAL_TYPE_MODULE : JS_EVAL_TYPE_GLOBAL;
+    JSValue val = JS_Eval(ctx, (char *)buf, buf_len, filename, flags);
+    js_free(ctx, buf);
+
+    if (JS_IsException(val)) {
+        JS_FreeValue(ctx, val);
+        return -1;
+    }
+    JS_FreeValue(ctx, val);
+    return 0;
+}
 
 int main(int argc, char **argv)
 {
     JSRuntime *rt;
     JSContext *ctx;
-    int status = 0;
+    int r;
+
+    if (argc < 2) {
+        fprintf(stderr, "Usage: tqs <script.js>\n");
+        return 1;
+    }
 
     rt = JS_NewRuntime();
     if (!rt) {
-        fprintf(stderr, "qjs: cannot allocate JS runtime\n");
-        exit(1);
+        fprintf(stderr, "tqs: cannot allocate JS runtime\n");
+        return 2;
     }
+
+    js_std_init_handlers(rt);
 
     ctx = JS_NewContext(rt);
     if (!ctx) {
-        fprintf(stderr, "qjs: cannot allocate JS context\n");
-        exit(1);
+        fprintf(stderr, "tqs: cannot allocate JS context\n");
+        return 2;
     }
 
-    /* Add standard modules */
-    js_std_add_helpers(ctx, argc, argv);
+    js_init_module_std(ctx, "qjs:std");
+    js_init_module_os(ctx, "qjs:os");
+    js_init_module_std(ctx, "std");
+    js_init_module_os(ctx, "os");
 
-    /* Add maybefetch global function */
+    JS_SetModuleLoaderFunc2(rt, NULL, js_module_loader, js_module_check_attributes, NULL);
+    JS_SetHostPromiseRejectionTracker(rt, js_std_promise_rejection_tracker, NULL);
+
+    js_std_add_helpers(ctx, argc - 1, argv + 1);
     js_std_add_maybefetch(ctx);
 
-    /* Evaluate files */
-    if (argc > 1) {
-        status = js_std_eval_file(ctx, argv[1], JS_EVAL_TYPE_GLOBAL);
-    } else {
-        /* Interactive mode */
-        js_std_loop(ctx);
+    const char *filename = argv[1];
+
+    size_t peek_len;
+    uint8_t *peek_buf = js_load_file(ctx, &peek_len, filename);
+    if (!peek_buf) {
+        fprintf(stderr, "tqs: could not load '%s'\n", filename);
+        js_std_free_handlers(rt);
+        JS_FreeContext(ctx);
+        JS_FreeRuntime(rt);
+        return 1;
+    }
+    int is_module = JS_DetectModule((const char *)peek_buf, peek_len);
+    js_free(ctx, peek_buf);
+
+    if (eval_file(ctx, filename, is_module)) {
+        js_std_dump_error(ctx);
+        js_std_free_handlers(rt);
+        JS_FreeContext(ctx);
+        JS_FreeRuntime(rt);
+        return 1;
+    }
+
+    r = js_std_loop(ctx);
+    if (r) {
+        js_std_dump_error(ctx);
     }
 
     js_std_free_handlers(rt);
     JS_FreeContext(ctx);
     JS_FreeRuntime(rt);
-    return status;
+    return r ? 1 : 0;
 }
-EOF
+MAINEOF
 
-# Update Makefile to include our files and link curl
-cd "$QUICKJS_DIR"
+if ! grep -q "tqs_exe" "$QUICKJS_DIR/CMakeLists.txt"; then
+cat >> "$QUICKJS_DIR/CMakeLists.txt" << 'CMAKEEOF'
 
-# Backup original Makefile
-cp Makefile Makefile.bak
+# --- tqs: QuickJS with maybefetch ---
+find_library(CURL_LIB curl)
+find_path(CURL_INCLUDE curl/curl.h)
+if(CURL_LIB AND CURL_INCLUDE)
+    add_executable(tqs_exe
+        tqs_main.c
+        maybefetch.c
+        quickjs_maybefetch.c
+    )
+    target_include_directories(tqs_exe PRIVATE ${CURL_INCLUDE} ${CMAKE_CURRENT_SOURCE_DIR})
+    target_compile_definitions(tqs_exe PRIVATE ${qjs_defines} _GNU_SOURCE)
+    target_link_libraries(tqs_exe PRIVATE qjs qjs-libc ${CURL_LIB} m)
+    set_target_properties(tqs_exe PROPERTIES OUTPUT_NAME "tqs")
+else()
+    message(WARNING "libcurl not found, skipping tqs build")
+endif()
+CMAKEEOF
+fi
 
-# Add our custom target
-cat >> Makefile << 'EOF'
+echo "Building with cmake..."
+mkdir -p "$BUILD_DIR"
+cd "$BUILD_DIR"
+cmake .. -DCMAKE_BUILD_TYPE=Release
+cmake --build . --target tqs_exe -j$(nproc 2>/dev/null || sysctl -n hw.ncpu)
 
-# TQS custom build with maybefetch
-tqs: $(OBJDIR)/qjs_with_maybefetch.o $(OBJDIR)/maybefetch.o $(OBJDIR)/quickjs_maybefetch.o libquickjs$(LIB_SUFFIX)
-	$(CC) $(LDFLAGS) -o $@ $^ $(LIBS) -lcurl
-
-$(OBJDIR)/qjs_with_maybefetch.o: qjs_with_maybefetch.c $(QUICKJS_LIB_OBJ)
-	$(CC) $(CFLAGS_OPT) -c -o $@ $<
-
-$(OBJDIR)/maybefetch.o: maybefetch.c
-	$(CC) $(CFLAGS_OPT) -c -o $@ $<
-
-$(OBJDIR)/quickjs_maybefetch.o: quickjs_maybefetch.c
-	$(CC) $(CFLAGS_OPT) -c -o $@ $<
-
-.PHONY: tqs
-EOF
-
-echo "Building QuickJS with maybefetch..."
-make tqs
-
-echo "Moving binary to bin directory..."
-cd ..
+echo "Copying binary..."
+cd "$ROOT_DIR"
 mkdir -p bin
-cp "$QUICKJS_DIR/tqs" bin/
+cp "$BUILD_DIR/tqs" bin/
 
 echo "QuickJS with maybefetch built successfully!"
-echo "Binary available at: bin/tqs"
+echo "Binary: bin/tqs"

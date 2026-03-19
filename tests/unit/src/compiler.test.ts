@@ -1,94 +1,57 @@
-import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
+import { describe, it, expect, afterEach } from 'bun:test';
 import { compileAndRun } from '../../../src/compiler.js';
 import fs from 'fs';
 import path from 'path';
 
+const FIXTURES_DIR = path.join(__dirname, '../../fixtures');
+const TEMP_DIR = 'test-files';
+
 describe('compiler', () => {
-  const testDir = 'test-files';
-  const mockTQSFile = path.join(testDir, 'test.tqs');
-  const mockTSFile = path.join(testDir, 'test.ts');
-  const mockJSFile = path.join(testDir, 'test.js');
-  const mockScriptsFile = path.join(testDir, 'scripts', 'fetch.ts');
-
-  beforeEach(() => {
-    if (!fs.existsSync(testDir)) {
-      fs.mkdirSync(testDir, { recursive: true });
-    }
-    if (!fs.existsSync(path.join(testDir, 'scripts'))) {
-      fs.mkdirSync(path.join(testDir, 'scripts'), { recursive: true });
-    }
-  });
-
   afterEach(() => {
-    if (fs.existsSync(testDir)) {
-      fs.rmSync(testDir, { recursive: true, force: true });
+    if (fs.existsSync(TEMP_DIR)) {
+      fs.rmSync(TEMP_DIR, { recursive: true, force: true });
     }
   });
 
-  describe('file validation', () => {
-    it('should fail for non-existent file', () => {
-      expect(() => {
-        compileAndRun('non-existent.ts');
-      }).toThrow();
-    });
-
-    it('should fail for non-QuickJS file', () => {
-      fs.writeFileSync(mockTSFile, 'console.log("hello");');
-
-      expect(() => {
-        compileAndRun(mockTSFile);
-      }).toThrow();
-    });
+  it('should throw for non-existent file', () => {
+    expect(() => compileAndRun('non-existent.ts')).toThrow("File 'non-existent.ts' not found");
   });
 
-  describe('QuickJS file detection', () => {
-    it('should detect .tqs extension', () => {
-      fs.writeFileSync(mockTQSFile, 'console.log("tqs file");');
-
-      // This would normally try to compile, but we're testing detection
-      // We'd need to mock the compilation process for full testing
-      expect(fs.existsSync(mockTQSFile)).toBe(true);
-    });
-
-    it('should detect @tqs-script comment', () => {
-      const tsWithComment = `// @tqs-script
-console.log("quickjs script");`;
-      fs.writeFileSync(mockTSFile, tsWithComment);
-
-      expect(fs.existsSync(mockTSFile)).toBe(true);
-      const content = fs.readFileSync(mockTSFile, 'utf8');
-      expect(content).toContain('// @tqs-script');
-    });
-
-    it('should detect scripts directory', () => {
-      fs.writeFileSync(mockScriptsFile, 'console.log("scripts dir");');
-
-      expect(fs.existsSync(mockScriptsFile)).toBe(true);
-      expect(path.dirname(mockScriptsFile)).toContain('scripts');
-    });
+  it('should throw for unmarked file', () => {
+    const unmarked = path.join(FIXTURES_DIR, 'unmarked.ts');
+    expect(() => compileAndRun(unmarked)).toThrow('not marked for QuickJS execution');
   });
 
-  describe('file type validation', () => {
-    it('should accept .ts files', () => {
-      const tsFile = `// @tqs-script
-console.log("typescript");`;
-      fs.writeFileSync(mockTSFile, tsFile);
+  it('should accept .tqs extension', () => {
+    const fixture = path.join(FIXTURES_DIR, 'tqs-extension.tqs');
+    try {
+      compileAndRun(fixture);
+    } catch (err) {
+      const message = (err as Error).message;
+      if (message.includes('not marked for QuickJS execution')) throw err;
+    }
+  });
 
-      expect(path.extname(mockTSFile)).toBe('.ts');
-    });
+  it('should accept @tqs-script comment', () => {
+    const fixture = path.join(FIXTURES_DIR, 'tqs-comment.ts');
+    try {
+      compileAndRun(fixture);
+    } catch (err) {
+      const message = (err as Error).message;
+      if (message.includes('not marked for QuickJS execution')) throw err;
+    }
+  });
 
-    it('should accept .tqs files', () => {
-      fs.writeFileSync(mockTQSFile, 'console.log("tqs");');
+  it('should accept file in scripts directory', () => {
+    fs.mkdirSync(path.join(TEMP_DIR, 'scripts'), { recursive: true });
+    const dirFixture = path.join(TEMP_DIR, 'scripts', 'detect-by-dir.ts');
+    fs.writeFileSync(dirFixture, 'console.log("detect by dir");');
 
-      expect(path.extname(mockTQSFile)).toBe('.tqs');
-    });
-
-    it('should accept .js files', () => {
-      const jsFile = `// @tqs-script
-console.log("javascript");`;
-      fs.writeFileSync(mockJSFile, jsFile);
-
-      expect(path.extname(mockJSFile)).toBe('.js');
-    });
+    try {
+      compileAndRun(dirFixture);
+    } catch (err) {
+      const message = (err as Error).message;
+      if (message.includes('not marked for QuickJS execution')) throw err;
+    }
   });
 });

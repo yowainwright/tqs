@@ -1,11 +1,10 @@
-// TQS CLI Types
 export interface CliOptions {
   readonly help?: boolean | undefined;
   readonly version?: boolean | undefined;
 }
 
 export interface ParsedArgs extends CliOptions {
-  readonly scriptFile?: string;
+  readonly scriptFile?: string | undefined;
 }
 
 export interface FetchConfig {
@@ -22,9 +21,6 @@ export interface Logger {
   success(message: string): void;
 }
 
-// QuickJS-Specific Modules (not available in Node.js)
-
-// std module
 export interface QuickJSStd {
   exit(code: number): void;
   gc(): void;
@@ -47,7 +43,6 @@ export interface QuickJSStd {
   };
 }
 
-// os module
 export interface QuickJSOS {
   open(filename: string, flags: string, mode?: number): number;
   close(fd: number): number;
@@ -75,89 +70,13 @@ export interface QuickJSOS {
   platform: string;
 }
 
-// QuickJS Extensions
-// Only define what we add to QuickJS beyond standard modules
-
-// QuickJS Module Declarations
-declare module 'std' {
-  const std: QuickJSStd;
-  export = std;
-}
-
-declare module 'os' {
-  const os: QuickJSOS;
-  export = os;
-}
-
-// Node.js modules are NOT available in QuickJS
-declare module 'fs' {
-  const _: 'Node.js fs module is not available in QuickJS. Use os module instead.';
-  export = _;
-}
-
-declare module 'path' {
-  const _: 'Node.js path module is not available in QuickJS. Use os module instead.';
-  export = _;
-}
-
-declare module 'http' {
-  const _: 'Node.js http module is not available in QuickJS. Use maybefetch() instead.';
-  export = _;
-}
-
-declare module 'https' {
-  const _: 'Node.js https module is not available in QuickJS. Use maybefetch() instead.';
-  export = _;
-}
-
-declare module 'process' {
-  const _: 'Node.js process module is not available in QuickJS. Use std module instead.';
-  export = _;
-}
-
-declare module 'child_process' {
-  const _: 'Node.js child_process module is not available in QuickJS. Use os.exec() instead.';
-  export = _;
-}
-
-declare module 'util' {
-  const _: 'Node.js util module is not available in QuickJS.';
-  export = _;
-}
-
-declare module 'crypto' {
-  const _: 'Node.js crypto module is not available in QuickJS.';
-  export = _;
-}
-
-declare module 'url' {
-  const _: 'Node.js url module is not available in QuickJS.';
-  export = _;
-}
-
-declare module 'querystring' {
-  const _: 'Node.js querystring module is not available in QuickJS.';
-  export = _;
-}
-
-// Global QuickJS Functions
-declare global {
-  // Node.js globals are NOT available
-  const process: 'Node.js process global is not available in QuickJS. Use std module instead.';
-  const __dirname: 'Node.js __dirname is not available in QuickJS. Use os.getcwd() instead.';
-  const __filename: 'Node.js __filename is not available in QuickJS.';
-  const Buffer: 'Node.js Buffer is not available in QuickJS. Use ArrayBuffer instead.';
-  const require: 'Node.js require() is not available in QuickJS. Use import instead.';
-  const exports: 'Node.js exports is not available in QuickJS. Use export instead.';
-  const module: 'Node.js module is not available in QuickJS. Use export instead.';
-
-  // Our custom function
-  function maybefetch(
-    url: string,
+export interface NativeBinding {
+  createFetchConfig: (
     maxRetries: number,
     initialDelayMs: number,
     maxDelayMs: number,
     backoffFactor: number,
     timeoutMs: number
-  ): string | null;
+  ) => Record<string, unknown>;
+  maybeFetch: (url: string, config: Record<string, unknown>) => string | null;
 }
