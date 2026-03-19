@@ -1,0 +1,141 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: macos-latest
+            artifact: tqs-darwin-arm64
+          - os: macos-13
+            artifact: tqs-darwin-x64
+          - os: ubuntu-latest
+            artifact: tqs-linux-x64
+          - os: ubuntu-24.04-arm
+            artifact: tqs-linux-arm64
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libcurl4-openssl-dev cmake
+
+      - name: Build QuickJS with maybefetch
+        run: bash scripts/build-quickjs.sh
+
+      - name: Rename binary
+        run: |
+          mv bin/tqs bin/${{ matrix.artifact }}
+          chmod +x bin/${{ matrix.artifact }}
+          file bin/${{ matrix.artifact }}
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: bin/${{ matrix.artifact }}
+
+  release:
+    needs: build
+    runs-on: macos-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.PR_CREATE_TOKEN }}
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: ./artifacts
+
+      - name: Flatten artifacts
+        run: |
+          mkdir -p ./bin
+          mv ./artifacts/tqs-darwin-arm64/tqs-darwin-arm64 ./bin/
+          mv ./artifacts/tqs-darwin-x64/tqs-darwin-x64 ./bin/
+          mv ./artifacts/tqs-linux-x64/tqs-linux-x64 ./bin/
+          mv ./artifacts/tqs-linux-arm64/tqs-linux-arm64 ./bin/
+          rm -rf ./artifacts
+          chmod +x ./bin/*
+
+      - name: Calculate checksums and update formula
+        run: |
+          VERSION="${{ github.ref_name }}"
+          VERSION="${VERSION#v}"
+          SHA_DARWIN_ARM64=$(shasum -a 256 ./bin/tqs-darwin-arm64 | cut -d ' ' -f 1)
+          SHA_DARWIN_X64=$(shasum -a 256 ./bin/tqs-darwin-x64 | cut -d ' ' -f 1)
+          SHA_LINUX_X64=$(shasum -a 256 ./bin/tqs-linux-x64 | cut -d ' ' -f 1)
+          SHA_LINUX_ARM64=$(shasum -a 256 ./bin/tqs-linux-arm64 | cut -d ' ' -f 1)
+
+          sed -i '' "s/version \".*\"/version \"${VERSION}\"/" Formula/tqs.rb
+          sed -i '' "s/sha256 \".*\" # arm64/sha256 \"${SHA_DARWIN_ARM64}\" # arm64/" Formula/tqs.rb
+          sed -i '' "s/sha256 \".*\" # x64/sha256 \"${SHA_DARWIN_X64}\" # x64/" Formula/tqs.rb
+          sed -i '' "s/sha256 \".*\" # linux-arm64/sha256 \"${SHA_LINUX_ARM64}\" # linux-arm64/" Formula/tqs.rb
+          sed -i '' "s/sha256 \".*\" # linux-x64/sha256 \"${SHA_LINUX_X64}\" # linux-x64/" Formula/tqs.rb
+
+      - name: Commit formula update
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Formula/tqs.rb
+          git commit -m "chore: update Homebrew formula for ${{ github.ref_name }}" || echo "No changes"
+          git push origin HEAD:main
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            ./bin/tqs-darwin-arm64
+            ./bin/tqs-darwin-x64
+            ./bin/tqs-linux-x64
+            ./bin/tqs-linux-arm64
+          generate_release_notes: true
+          body: |
+            ## Install
+
+            ### Homebrew (macOS/Linux)
+            ```bash
+            brew install yowainwright/tap/tqs
+            ```
+
+            ### npm/bun
+            ```bash
+            npm install -g tqs
+            ```
+
+            ### Binary Downloads
+            - `tqs-darwin-arm64` - macOS Apple Silicon
+            - `tqs-darwin-x64` - macOS Intel
+            - `tqs-linux-x64` - Linux x64
+            - `tqs-linux-arm64` - Linux ARM64
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Bun for npm publish
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Build TypeScript
+        run: bun run build:ts
+
+      - name: Publish to npm
+        run: |
+          echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" > ~/.npmrc
+          bun publish --access public
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}

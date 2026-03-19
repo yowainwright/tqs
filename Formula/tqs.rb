@@ -1,25 +1,36 @@
 class Tqs < Formula
-  desc "Quick TypeScript scripts with QuickJS and maybefetch"
-  homepage "https://github.com/jeffrywainwright/tqs"
-  url "https://github.com/jeffrywainwright/tqs/archive/v1.0.0.tar.gz"
-  sha256 ""
+  desc "TypeScript scripts on QuickJS with built-in HTTP fetching"
+  homepage "https://github.com/yowainwright/tqs"
+  version "1.0.0"
   license "MIT"
 
-  depends_on "node" => :build
+  on_macos do
+    if Hardware::CPU.arm?
+      url "https://github.com/yowainwright/tqs/releases/download/v#{version}/tqs-darwin-arm64"
+      sha256 "" # arm64
+    else
+      url "https://github.com/yowainwright/tqs/releases/download/v#{version}/tqs-darwin-x64"
+      sha256 "" # x64
+    end
+  end
+
+  on_linux do
+    if Hardware::CPU.arm?
+      url "https://github.com/yowainwright/tqs/releases/download/v#{version}/tqs-linux-arm64"
+      sha256 "" # linux-arm64
+    else
+      url "https://github.com/yowainwright/tqs/releases/download/v#{version}/tqs-linux-x64"
+      sha256 "" # linux-x64
+    end
+  end
+
   depends_on "curl"
-  depends_on "quickjs"
 
   def install
-    system "npm", "install", *std_npm_args(prefix: false)
-    system "npm", "run", "build"
-
-    bin.install "dist/cli.js" => "tqs"
-    lib.install Dir["dist/*"]
-    lib.install Dir["build/Release/*"]
+    bin.install Dir["tqs-*"].first => "tqs"
   end
 
   test do
-    output = shell_output("#{bin}/tqs --version")
-    assert_match "1.0.0", output
+    assert_match "tqs", shell_output("#{bin}/tqs 2>&1", 1)
   end
 end
