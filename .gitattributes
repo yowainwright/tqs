@@ -1,0 +1,2 @@
+binding.gyp linguist-vendored
+*.tqs linguist-language=TypeScript

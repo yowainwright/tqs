@@ -10,14 +10,12 @@ typedef struct {
     size_t size;
 } MemoryStruct;
 
-static size_t WriteMemoryCallback(void* contents, size_t size, size_t nmemb, void* userp) {
+static size_t write_memory_callback(void* contents, size_t size, size_t nmemb, void* userp) {
     const size_t realsize = size * nmemb;
     MemoryStruct* mem = (MemoryStruct*)userp;
 
     char* ptr = realloc(mem->memory, mem->size + realsize + 1);
-    if (!ptr) {
-        return 0;
-    }
+    if (!ptr) return 0;
 
     mem->memory = ptr;
     memcpy(&(mem->memory[mem->size]), contents, realsize);
@@ -27,8 +25,8 @@ static size_t WriteMemoryCallback(void* contents, size_t size, size_t nmemb, voi
     return realsize;
 }
 
-static int sleep_ms(int milliseconds) {
-    return usleep(milliseconds * 1000);
+static void sleep_ms(int milliseconds) {
+    usleep(milliseconds * 1000);
 }
 
 static int calculate_delay(int attempt, const FetchConfig* config) {
@@ -37,76 +35,80 @@ static int calculate_delay(int attempt, const FetchConfig* config) {
     return delay_ms > config->max_delay_ms ? config->max_delay_ms : delay_ms;
 }
 
+static void configure_curl(CURL* handle, const char* url, MemoryStruct* chunk, int timeout_ms) {
+    curl_easy_setopt(handle, CURLOPT_URL, url);
+    curl_easy_setopt(handle, CURLOPT_WRITEFUNCTION, write_memory_callback);
+    curl_easy_setopt(handle, CURLOPT_WRITEDATA, (void*)chunk);
+    curl_easy_setopt(handle, CURLOPT_USERAGENT, "tqs-maybefetch/1.0");
+    curl_easy_setopt(handle, CURLOPT_FOLLOWLOCATION, 1L);
+    curl_easy_setopt(handle, CURLOPT_TIMEOUT_MS, timeout_ms);
+    curl_easy_setopt(handle, CURLOPT_CONNECTTIMEOUT_MS, timeout_ms);
+}
+
+static int is_success(CURL* handle, CURLcode res) {
+    if (res != CURLE_OK) return 0;
+
+    long response_code;
+    curl_easy_getinfo(handle, CURLINFO_RESPONSE_CODE, &response_code);
+    return response_code >= 200 && response_code < 300;
+}
+
+static MemoryStruct* try_fetch(CURL* handle, const char* url, int timeout_ms) {
+    MemoryStruct* chunk = malloc(sizeof(MemoryStruct));
+    if (!chunk) return NULL;
+
+    chunk->memory = malloc(1);
+    chunk->size = 0;
+
+    if (!chunk->memory) {
+        free(chunk);
+        return NULL;
+    }
+
+    configure_curl(handle, url, chunk, timeout_ms);
+    const CURLcode res = curl_easy_perform(handle);
+
+    if (is_success(handle, res)) return chunk;
+
+    free(chunk->memory);
+    free(chunk);
+    return NULL;
+}
+
 FetchResponse* maybefetch(const char* url, const FetchConfig* config) {
-    if (!url || !config) {
-        return NULL;
-    }
+    if (!url || !config) return NULL;
 
-    CURL* curl_handle = curl_easy_init();
-    if (!curl_handle) {
-        return NULL;
-    }
-
-    FetchResponse* response = malloc(sizeof(FetchResponse));
-    if (!response) {
-        curl_easy_cleanup(curl_handle);
-        return NULL;
-    }
-
-    response->data = NULL;
-    response->size = 0;
+    CURL* handle = curl_easy_init();
+    if (!handle) return NULL;
 
     for (int attempt = 0; attempt < config->max_retries; attempt++) {
-        MemoryStruct chunk;
-        chunk.memory = malloc(1);
-        chunk.size = 0;
+        MemoryStruct* result = try_fetch(handle, url, config->timeout_ms);
 
-        if (!chunk.memory) {
-            free(response);
-            curl_easy_cleanup(curl_handle);
-            return NULL;
-        }
-
-        curl_easy_setopt(curl_handle, CURLOPT_URL, url);
-        curl_easy_setopt(curl_handle, CURLOPT_WRITEFUNCTION, WriteMemoryCallback);
-        curl_easy_setopt(curl_handle, CURLOPT_WRITEDATA, (void*)&chunk);
-        curl_easy_setopt(curl_handle, CURLOPT_USERAGENT, "tqs-maybefetch/1.0");
-        curl_easy_setopt(curl_handle, CURLOPT_FOLLOWLOCATION, 1L);
-        curl_easy_setopt(curl_handle, CURLOPT_TIMEOUT_MS, config->timeout_ms);
-        curl_easy_setopt(curl_handle, CURLOPT_CONNECTTIMEOUT_MS, config->timeout_ms);
-
-        const CURLcode res = curl_easy_perform(curl_handle);
-
-        if (res == CURLE_OK) {
-            long response_code;
-            curl_easy_getinfo(curl_handle, CURLINFO_RESPONSE_CODE, &response_code);
-
-            if (response_code >= 200 && response_code < 300) {
-                response->data = chunk.memory;
-                response->size = chunk.size;
-                curl_easy_cleanup(curl_handle);
-                return response;
+        if (result) {
+            FetchResponse* response = malloc(sizeof(FetchResponse));
+            if (!response) {
+                free(result->memory);
+                free(result);
+                curl_easy_cleanup(handle);
+                return NULL;
             }
+            response->data = result->memory;
+            response->size = result->size;
+            free(result);
+            curl_easy_cleanup(handle);
+            return response;
         }
 
-        free(chunk.memory);
-
-        if (attempt < config->max_retries - 1) {
-            const int delay_ms = calculate_delay(attempt, config);
-            sleep_ms(delay_ms);
-        }
+        const int is_last_attempt = attempt >= config->max_retries - 1;
+        if (!is_last_attempt) sleep_ms(calculate_delay(attempt, config));
     }
 
-    curl_easy_cleanup(curl_handle);
-    free(response);
+    curl_easy_cleanup(handle);
     return NULL;
 }
 
 void free_fetch_response(FetchResponse* response) {
-    if (response) {
-        if (response->data) {
-            free(response->data);
-        }
-        free(response);
-    }
+    if (!response) return;
+    free(response->data);
+    free(response);
 }

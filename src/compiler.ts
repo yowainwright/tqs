@@ -1,21 +1,21 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import { execSync } from 'node:child_process';
 import { logger } from './logger.js';
 
-const fs = require('fs');
-const path = require('path');
-const { execSync } = require('child_process');
+const SUPPORTED_EXTENSIONS = ['.ts', '.tqs', '.js'] as const;
+const QUICKJS_DIRECTORIES = ['scripts', 'quickjs', 'tqs'] as const;
+const TQS_MARKERS = ['// @tqs-script', '// @tqs'] as const;
+const FIRST_LINES_TO_CHECK = 5;
 
-// File validation functions
-const fileExists = (filePath: string): boolean => {
-  return fs.existsSync(filePath);
-};
+const fileExists = (filePath: string): boolean =>
+  fs.existsSync(filePath);
 
-const getFileExtension = (filePath: string): string => {
-  return path.extname(filePath).toLowerCase();
-};
+const getFileExtension = (filePath: string): string =>
+  path.extname(filePath).toLowerCase();
 
-const getDirectoryName = (filePath: string): string => {
-  return path.basename(path.dirname(filePath)).toLowerCase();
-};
+const getDirectoryName = (filePath: string): string =>
+  path.basename(path.dirname(filePath)).toLowerCase();
 
 const readFileContent = (filePath: string): string | null => {
   try {
@@ -25,40 +25,32 @@ const readFileContent = (filePath: string): string | null => {
   }
 };
 
-// QuickJS detection functions
-const hasQuickJSExtension = (filePath: string): boolean => {
-  return getFileExtension(filePath) === '.tqs';
-};
+const hasQuickJSExtension = (filePath: string): boolean =>
+  getFileExtension(filePath) === '.tqs';
 
 const hasQuickJSDirectory = (filePath: string): boolean => {
   const dirName = getDirectoryName(filePath);
-  return ['scripts', 'quickjs', 'tqs'].includes(dirName);
+  return (QUICKJS_DIRECTORIES as readonly string[]).includes(dirName);
 };
 
 const hasQuickJSComment = (filePath: string): boolean => {
   const content = readFileContent(filePath);
-  if (!content) {
-    return false;
-  }
+  if (!content) return false;
 
-  const firstLines = content.split('\n').slice(0, 5).join('\n');
-  return firstLines.includes('// @tqs-script') || firstLines.includes('// @tqs');
+  const firstLines = content.split('\n').slice(0, FIRST_LINES_TO_CHECK).join('\n');
+  return TQS_MARKERS.some(marker => firstLines.includes(marker));
 };
 
-const isQuickJSFile = (filePath: string): boolean => {
-  return hasQuickJSExtension(filePath) ||
-         hasQuickJSDirectory(filePath) ||
-         hasQuickJSComment(filePath);
-};
+const isQuickJSFile = (filePath: string): boolean =>
+  hasQuickJSExtension(filePath) ||
+  hasQuickJSDirectory(filePath) ||
+  hasQuickJSComment(filePath);
 
-// Path resolution functions
-const getQuickJSBinaryPath = (): string => {
-  return path.join(__dirname, '..', 'bin', 'tqs');
-};
+const getQuickJSBinaryPath = (): string =>
+  path.join(import.meta.dirname ?? __dirname, '..', 'bin', 'tqs');
 
-const getGlobalTypesPath = (): string => {
-  return path.join(__dirname, 'global.d.ts');
-};
+const getGlobalTypesPath = (): string =>
+  path.join(import.meta.dirname ?? __dirname, 'global.d.ts');
 
 const createOutputPath = (inputPath: string): string => {
   const ext = getFileExtension(inputPath);
@@ -67,8 +59,7 @@ const createOutputPath = (inputPath: string): string => {
     : inputPath.replace(/\.ts$/, '.js');
 };
 
-// Compilation functions
-const buildTypeScriptCommand = (inputFile: string, outputFile: string, includeQuickJSTypes: boolean): string => {
+const buildTypeScriptCommand = (inputFile: string, _outputFile: string, includeQuickJSTypes: boolean): string => {
   const baseCmd = 'npx tsc --target es2020 --module commonjs --outDir . --lib ES2020';
 
   if (includeQuickJSTypes) {
@@ -87,13 +78,12 @@ const compileTypeScript = (inputFile: string, includeQuickJSTypes: boolean): str
   const outputFile = createOutputPath(inputFile);
   const command = buildTypeScriptCommand(inputFile, outputFile, includeQuickJSTypes);
 
-  logger.info(`Compiling TypeScript: ${inputFile} → ${outputFile}`);
+  logger.info(`Compiling TypeScript: ${inputFile} -> ${outputFile}`);
   executeCommand(command);
 
   return outputFile;
 };
 
-// Execution functions
 const executeWithQuickJS = (jsFile: string): void => {
   const binaryPath = getQuickJSBinaryPath();
   const command = `${binaryPath} ${jsFile}`;
@@ -102,46 +92,40 @@ const executeWithQuickJS = (jsFile: string): void => {
   executeCommand(command);
 };
 
-// Cleanup functions
 const removeFile = (filePath: string): void => {
   if (fileExists(filePath)) {
     fs.unlinkSync(filePath);
   }
 };
 
-// Validation functions
-const validateFileExists = (filePath: string): boolean => {
+const validateFileExists = (filePath: string): void => {
   if (!fileExists(filePath)) {
-    logger.error(`Error: File '${filePath}' not found`);
-    return false;
+    throw new Error(`File '${filePath}' not found`);
   }
-  return true;
 };
 
-const validateQuickJSFile = (filePath: string): boolean => {
+const validateQuickJSFile = (filePath: string): void => {
   if (!isQuickJSFile(filePath)) {
-    logger.error(`Error: File '${filePath}' is not marked for QuickJS execution.`);
-    logger.error('Use one of:');
-    logger.error('  1. .tqs file extension');
-    logger.error('  2. // @tqs-script comment at top of file');
-    logger.error('  3. Place in scripts/, quickjs/, or tqs/ directory');
-    return false;
+    const message = [
+      `File '${filePath}' is not marked for QuickJS execution.`,
+      'Use one of:',
+      '  1. .tqs file extension',
+      '  2. // @tqs-script comment at top of file',
+      '  3. Place in scripts/, quickjs/, or tqs/ directory',
+    ].join('\n');
+    throw new Error(message);
   }
-  return true;
 };
 
-const validateFileType = (filePath: string): boolean => {
+const validateFileType = (filePath: string): void => {
   const ext = getFileExtension(filePath);
-  const supportedExts = ['.ts', '.tqs', '.js'];
+  const isSupported = (SUPPORTED_EXTENSIONS as readonly string[]).includes(ext);
 
-  if (!supportedExts.includes(ext)) {
-    logger.error(`Error: Unsupported file type '${ext}'. Use .ts, .tqs, or .js files.`);
-    return false;
+  if (!isSupported) {
+    throw new Error(`Unsupported file type '${ext}'. Use .ts, .tqs, or .js files.`);
   }
-  return true;
 };
 
-// Main compilation functions
 const processTypeScriptFile = (filePath: string): void => {
   const isQuickJS = isQuickJSFile(filePath);
   const outputFile = compileTypeScript(filePath, isQuickJS);
@@ -157,24 +141,17 @@ const processJavaScriptFile = (filePath: string): void => {
   executeWithQuickJS(filePath);
 };
 
-// Main export
 export const compileAndRun = (filePath: string): void => {
-  if (!validateFileExists(filePath) ||
-      !validateQuickJSFile(filePath) ||
-      !validateFileType(filePath)) {
-    process.exit(1);
-  }
+  validateFileExists(filePath);
+  validateQuickJSFile(filePath);
+  validateFileType(filePath);
 
   const ext = getFileExtension(filePath);
 
-  try {
-    if (ext === '.ts' || ext === '.tqs') {
-      processTypeScriptFile(filePath);
-    } else if (ext === '.js') {
-      processJavaScriptFile(filePath);
-    }
-  } catch (error) {
-    logger.error(`Compilation or execution failed: ${error.message}`);
-    process.exit(1);
+  const isTypeScript = ext === '.ts' || ext === '.tqs';
+  if (isTypeScript) {
+    processTypeScriptFile(filePath);
+  } else if (ext === '.js') {
+    processJavaScriptFile(filePath);
   }
 };
