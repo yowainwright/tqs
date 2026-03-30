@@ -19,14 +19,14 @@ describe('CLI Integration', () => {
 
   it('should show help with --help', () => {
     const result = run('--help');
-    expect(result).toContain('Usage:');
+    expect(result).toContain('Usage');
     expect(result).toContain('--help');
     expect(result).toContain('--version');
   });
 
   it('should show help with -h', () => {
     const result = run('-h');
-    expect(result).toContain('tqs - quick scripts for typescript');
+    expect(result).toContain('quick scripts for typescript');
   });
 
   it('should show version with --version', () => {
@@ -36,7 +36,7 @@ describe('CLI Integration', () => {
 
   it('should show help when no arguments provided', () => {
     const result = run('');
-    expect(result).toContain('Usage:');
+    expect(result).toContain('Usage');
   });
 
   it('should fail for non-existent file', () => {

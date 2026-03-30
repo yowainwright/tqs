@@ -149,7 +149,7 @@ fi
 echo "Building with cmake..."
 mkdir -p "$BUILD_DIR"
 cd "$BUILD_DIR"
-cmake .. -DCMAKE_BUILD_TYPE=Release
+cmake .. -DCMAKE_BUILD_TYPE=Release ${EXTRA_CMAKE_OPTS:-}
 cmake --build . --target tqs_exe -j$(nproc 2>/dev/null || sysctl -n hw.ncpu)
 
 echo "Copying binary..."

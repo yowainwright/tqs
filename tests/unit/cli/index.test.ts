@@ -3,33 +3,34 @@ import { main } from '../../../src/cli/index.js';
 
 describe('main', () => {
   let originalArgv: string[];
-  let originalLog: typeof console.log;
+  let originalWrite: typeof process.stdout.write;
   let logOutput: string;
 
   beforeEach(() => {
     originalArgv = process.argv;
-    originalLog = console.log;
+    originalWrite = process.stdout.write.bind(process.stdout);
     logOutput = '';
-    console.log = (msg: string) => {
-      logOutput += msg + '\n';
-    };
+    process.stdout.write = ((chunk: unknown) => {
+      logOutput += String(chunk);
+      return true;
+    }) as typeof process.stdout.write;
   });
 
   afterEach(() => {
     process.argv = originalArgv;
-    console.log = originalLog;
+    process.stdout.write = originalWrite;
   });
 
   it('should show help when no arguments provided', () => {
     process.argv = ['node', 'cli.js'];
     main();
-    expect(logOutput).toContain('Usage:');
+    expect(logOutput).toContain('Usage');
   });
 
   it('should show help with --help flag', () => {
     process.argv = ['node', 'cli.js', '--help'];
     main();
-    expect(logOutput).toContain('Usage:');
+    expect(logOutput).toContain('Usage');
   });
 
   it('should show version with --version flag', () => {

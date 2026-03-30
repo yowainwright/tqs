@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { tmpdir } from 'node:os';
 import { execSync } from 'node:child_process';
 import { logger } from './logger.js';
 
@@ -59,28 +60,49 @@ const createOutputPath = (inputPath: string): string => {
     : inputPath.replace(/\.ts$/, '.js');
 };
 
-const buildTypeScriptCommand = (inputFile: string, outputFile: string, includeQuickJSTypes: boolean): string => {
+const createTempTypeRoots = (globalTypesPath: string): string => {
+  const tempDir = fs.mkdtempSync(path.join(tmpdir(), 'tqs-types-'));
+  const quickjsDir = path.join(tempDir, 'quickjs');
+  fs.mkdirSync(quickjsDir);
+  fs.copyFileSync(globalTypesPath, path.join(quickjsDir, 'index.d.ts'));
+  return tempDir;
+};
+
+const buildTypeScriptCommand = (inputFile: string, outputFile: string, typeRootsDir: string | null): string => {
   const outDir = path.dirname(path.resolve(outputFile));
   const baseCmd = `npx tsc --target es2020 --module commonjs --outDir ${outDir} --lib ES2020`;
+  const typeRootsFlag = typeRootsDir ? ` --typeRoots ${typeRootsDir}` : '';
 
-  if (includeQuickJSTypes) {
-    const typesDir = path.dirname(getGlobalTypesPath());
-    return `${baseCmd} --typeRoots ${typesDir} ${inputFile}`;
-  }
-
-  return `${baseCmd} ${inputFile}`;
+  return `${baseCmd}${typeRootsFlag} ${inputFile}`;
 };
 
 const executeCommand = (command: string): void => {
   execSync(command, { stdio: 'inherit' });
 };
 
-const compileTypeScript = (inputFile: string, includeQuickJSTypes: boolean): string => {
-  const outputFile = createOutputPath(inputFile);
-  const command = buildTypeScriptCommand(inputFile, outputFile, includeQuickJSTypes);
+const toTempTsPath = (filePath: string): string =>
+  filePath.replace(/\.tqs$/, '.ts');
 
-  logger.info(`Compiling TypeScript: ${inputFile} -> ${outputFile}`);
-  executeCommand(command);
+const compileTypeScript = (inputFile: string, includeQuickJSTypes: boolean): string => {
+  const ext = getFileExtension(inputFile);
+  const isTqs = ext === '.tqs';
+  const tempFile = isTqs ? toTempTsPath(inputFile) : null;
+  const tempTypeRoots = includeQuickJSTypes ? createTempTypeRoots(getGlobalTypesPath()) : null;
+
+  if (tempFile) fs.copyFileSync(inputFile, tempFile);
+
+  const sourceFile = tempFile ?? inputFile;
+  const outputFile = createOutputPath(inputFile);
+  const command = buildTypeScriptCommand(sourceFile, outputFile, tempTypeRoots);
+
+  logger.step(`Compiling TypeScript: ${inputFile} -> ${outputFile}`);
+
+  try {
+    executeCommand(command);
+  } finally {
+    if (tempFile) removeFile(tempFile);
+    if (tempTypeRoots) fs.rmSync(tempTypeRoots, { recursive: true });
+  }
 
   return outputFile;
 };
@@ -89,7 +111,7 @@ const executeWithQuickJS = (jsFile: string): void => {
   const binaryPath = getQuickJSBinaryPath();
   const command = `${binaryPath} ${jsFile}`;
 
-  logger.info(`Running with QuickJS+maybefetch: ${jsFile}`);
+  logger.step(`Running with QuickJS+maybefetch: ${jsFile}`);
   executeCommand(command);
 };
 
