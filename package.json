@@ -17,7 +17,7 @@
     "lint:fix": "oxlint --fix src",
     "typecheck": "tsc --noEmit",
     "test": "bun test",
-    "prepare": "npm run build",
+    "prepare": "bun run build:ts",
     "release": "release-it"
   },
   "keywords": ["typescript", "cli", "scripts", "tools", "quickjs", "maybefetch"],
@@ -25,16 +25,14 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/jeffrywainwright/tqs.git"
+    "url": "https://github.com/yowainwright/tqs.git"
   },
   "bugs": {
-    "url": "https://github.com/jeffrywainwright/tqs/issues"
+    "url": "https://github.com/yowainwright/tqs/issues"
   },
-  "homepage": "https://github.com/jeffrywainwright/tqs#readme",
+  "homepage": "https://github.com/yowainwright/tqs#readme",
   "devDependencies": {
-    "@types/node": "^24.0.0",
-    "node-addon-api": "^8.0.0",
-    "node-gyp": "^10.0.0",
+    "@socketsecurity/bun-security-scanner": "^1.1.2",
     "oxlint": "^0.9.0",
     "release-it": "^17.0.0",
     "tsup": "^8.0.0",

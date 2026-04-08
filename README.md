@@ -71,7 +71,13 @@ tqs --help          # Show help
 tqs --version       # Show version
 ```
 
-Supported inputs: `.ts`, `.tqs`, `.js`
+Supported inputs: `.tqs`, `.js`. For `.ts` files, add `// @tqs-script` at the top to mark them as QuickJS scripts:
+
+```typescript
+// @tqs-script
+import * as std from 'qjs:std';
+// ...
+```
 
 ## QuickJS Modules
 
@@ -132,10 +138,10 @@ Returns `string` on success (2xx response body), `null` on failure after all ret
 
 ## TypeScript API
 
-`tqs` also exports a TypeScript-friendly wrapper for use in Node.js or Bun environments:
+`tqs` exports typed wrappers around the `maybefetch` global for use in compiled scripts:
 
 ```typescript
-import { fetch, fetchAsync, defaultConfig } from 'tqs';
+import { maybeFetch, defaultConfig } from 'tqs';
 import type { FetchConfig } from 'tqs';
 ```
 
@@ -149,13 +155,9 @@ import type { FetchConfig } from 'tqs';
 | `backoffFactor` | `2.0` |
 | `timeoutMs` | `10000` |
 
-### `fetch(url, config?, binding?): string | null`
+### `maybeFetch(url, config?): string | null`
 
-Synchronous fetch with retry. Pass a `NativeBinding` to use a custom C extension; omits it to call the `maybefetch` global (QuickJS only).
-
-### `fetchAsync(url, config?, binding?): Promise<string | null>`
-
-Async wrapper around `fetch`.
+Typed wrapper around the `maybefetch` global. Only available in compiled QuickJS binaries.
 
 ## Resource Usage
 

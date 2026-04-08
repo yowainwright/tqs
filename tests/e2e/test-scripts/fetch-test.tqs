@@ -1,48 +1,36 @@
-// Test maybefetch functionality
-console.log("Testing maybefetch...");
+import * as std from 'std';
 
-// Test successful fetch
-const response = maybefetch(
-    'https://httpbin.org/json',
-    3,      // maxRetries
-    1000,   // initialDelayMs
-    30000,  // maxDelayMs
-    2.0,    // backoffFactor
-    10000   // timeoutMs
-);
+const HTTPBIN_URL = 'http://httpbin/json';
+const INVALID_URL = 'http://invalid-domain-that-does-not-exist.internal';
 
-if (response) {
-    console.log("Fetch successful!");
+const response = maybefetch(HTTPBIN_URL, 3, 500, 5000, 2.0, 5000);
 
-    try {
-        const data = JSON.parse(response);
-        console.log("Parsed JSON data:", typeof data);
-
-        if (data && typeof data === 'object') {
-            console.log("Response contains valid JSON object");
-        }
-    } catch (e) {
-        console.log("Response is not valid JSON, but fetch succeeded");
-    }
-} else {
-    console.log("Fetch failed - this might be expected in test environment");
+if (response === null) {
+  std.err.puts('FAIL: maybefetch returned null for valid URL\n');
+  std.exit(1);
 }
 
-// Test failed fetch (should return null)
-console.log("Testing failed fetch...");
-const failedResponse = maybefetch(
-    'https://invalid-domain-that-should-not-exist.com',
-    1,      // maxRetries (minimal for quick test)
-    100,    // initialDelayMs
-    1000,   // maxDelayMs
-    1.5,    // backoffFactor
-    1000    // timeoutMs (short timeout)
-);
-
-if (failedResponse === null) {
-    console.log("Failed fetch correctly returned null");
-} else {
-    console.log("Unexpected: failed fetch returned data");
+let parsed: unknown;
+try {
+  parsed = JSON.parse(response);
+} catch (_) {
+  std.err.puts('FAIL: response is not valid JSON\n');
+  std.exit(1);
 }
 
-console.log("Fetch test completed!");
+if (typeof parsed !== 'object' || parsed === null) {
+  std.err.puts('FAIL: parsed response is not an object\n');
+  std.exit(1);
+}
+
+std.out.puts('PASS: successful fetch returned valid JSON\n');
+
+const failed = maybefetch(INVALID_URL, 1, 100, 500, 1.5, 1000);
+
+if (failed !== null) {
+  std.err.puts('FAIL: maybefetch should return null for invalid URL\n');
+  std.exit(1);
+}
+
+std.out.puts('PASS: failed fetch correctly returned null\n');
+std.exit(0);

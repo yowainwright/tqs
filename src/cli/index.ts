@@ -11,7 +11,7 @@ declare const scriptArgs: string[];
 const args = scriptArgs.slice(1);
 const options = parseArgs(args);
 
-const shouldShowHelp = options.help ?? args.length === 0;
+const shouldShowHelp = options.help || args.length === 0;
 
 if (options.version) {
   showVersion();

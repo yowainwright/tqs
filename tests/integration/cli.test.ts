@@ -39,4 +39,14 @@ describe.skipIf(!hasBinary)('CLI Integration', () => {
   it('should fail for non-existent file', () => {
     expect(() => run('non-existent.tqs')).toThrow();
   });
+
+  it('should fail for .ts file without @tqs-script marker', () => {
+    const fixture = path.join(import.meta.dir, '../fixtures/unmarked.ts');
+    expect(() => run(fixture)).toThrow();
+  });
+
+  it('should accept .ts file with @tqs-script marker', () => {
+    const fixture = path.join(import.meta.dir, '../fixtures/tqs-comment.ts');
+    expect(() => run(fixture)).not.toThrow();
+  });
 });

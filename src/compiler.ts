@@ -2,6 +2,7 @@ import * as os from 'qjs:os';
 import * as std from 'qjs:std';
 import { EXIT_FAILURE } from './constants.js';
 import { logger } from './logger.js';
+import { isTqsScript } from './marker.js';
 
 const stripExtension = (filePath: string): string =>
   filePath.replace(/\.(ts|tqs|js)$/, '');
@@ -11,6 +12,11 @@ const toJsPath = (filePath: string): string =>
 
 const exec = (args: string[]): number =>
   os.exec(args, { block: true });
+
+const hasTqsMarker = (filePath: string): boolean => {
+  const file = std.loadFile(filePath);
+  return file ? isTqsScript(file) : false;
+};
 
 const buildJs = (inputFile: string): string => {
   const outFile = toJsPath(inputFile);
@@ -32,7 +38,13 @@ const buildBinary = (jsFile: string, outputFile: string): void => {
 
 export const compileAndRun = (inputFile: string): void => {
   const outputFile = stripExtension(inputFile);
+  const isTsExtension = inputFile.endsWith('.ts');
   const isTypeScript = /\.(ts|tqs)$/.test(inputFile);
+
+  if (isTsExtension && !hasTqsMarker(inputFile)) {
+    logger.error(`${inputFile} is missing // @tqs-script — add it to mark this file as a tqs script`);
+    std.exit(EXIT_FAILURE);
+  }
 
   logger.step(`Compiling: ${inputFile} -> ${outputFile}`);
 
