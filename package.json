@@ -1,6 +1,6 @@
 {
   "name": "tqs",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "description": "quick scripts for typescript",
   "type": "module",
   "main": "./dist/index.js",
@@ -20,7 +20,14 @@
     "prepare": "bun run build:ts",
     "release": "release-it"
   },
-  "keywords": ["typescript", "cli", "scripts", "tools", "quickjs", "maybefetch"],
+  "keywords": [
+    "typescript",
+    "cli",
+    "scripts",
+    "tools",
+    "quickjs",
+    "maybefetch"
+  ],
   "author": "Jeffry Wainwright",
   "license": "MIT",
   "repository": {
@@ -68,7 +75,11 @@
       "publish": false
     },
     "hooks": {
-      "before:init": ["bun run lint", "bun run build:ts", "bun run test"]
+      "before:init": [
+        "bun run lint",
+        "bun run build:ts",
+        "bun run test"
+      ]
     }
   }
 }
