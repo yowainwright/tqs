@@ -1,43 +1,34 @@
+import * as std from 'qjs:std';
 import { EXIT_SUCCESS, EXIT_FAILURE } from '../constants.js';
 import { parseArgs } from './args.js';
 import { showHelp } from './help.js';
 import { showVersion } from './version.js';
-import { compileAndRun } from '../compiler.js';
+import { compile } from '../compiler.js';
 import { logger } from '../logger.js';
 
-const shouldShowHelp = (args: readonly string[], helpFlag: boolean): boolean =>
-  helpFlag || args.length === 0;
+declare const scriptArgs: string[];
 
-export const main = (): void => {
-  const args = process.argv.slice(2);
-  const options = parseArgs(args);
+const args = scriptArgs.slice(1);
+const options = parseArgs(args);
 
-  const needsHelp = shouldShowHelp(args, options.help ?? false);
+const shouldShowHelp = options.help || args.length === 0;
 
-  if (options.version) {
-    showVersion();
-    return;
-  }
+if (options.version) {
+  showVersion();
+  std.exit(EXIT_SUCCESS);
+}
 
-  if (needsHelp) {
-    showHelp();
-    return;
-  }
+if (shouldShowHelp) {
+  showHelp();
+  std.exit(EXIT_SUCCESS);
+}
 
-  if (options.scriptFile) {
-    compileAndRun(options.scriptFile);
-  }
-};
-
-const isEntryPoint = import.meta.url === `file://${process.argv[1]}`;
-
-if (isEntryPoint) {
+if (options.scriptFile) {
   try {
-    main();
-    process.exit(EXIT_SUCCESS);
+    compile(options.scriptFile);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     logger.error(message);
-    process.exit(EXIT_FAILURE);
+    std.exit(EXIT_FAILURE);
   }
 }

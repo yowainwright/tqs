@@ -1,5 +1,7 @@
 import { logger } from '../logger.js';
 
+declare const __VERSION__: string;
+
 export const showVersion = (): void => {
-  logger.info('1.0.0');
+  logger.info(__VERSION__);
 };

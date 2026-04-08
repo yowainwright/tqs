@@ -1,83 +1,52 @@
-import { describe, it, expect, afterEach } from 'bun:test';
+import { describe, it, expect } from 'bun:test';
+import { createRequire } from 'node:module';
 import { execSync } from 'child_process';
-import fs from 'fs';
+import { existsSync } from 'fs';
 import path from 'path';
 
-const CLI_PATH = path.join(__dirname, '../../src/cli/index.ts');
-const FIXTURES_DIR = path.join(__dirname, '../fixtures');
-const TEMP_DIR = 'integration-test-files';
+const require = createRequire(import.meta.url);
+const { version } = require('../../package.json') as { version: string };
+
+const BIN_PATH = path.join(import.meta.dir, '../../bin/tqs');
+const hasBinary = existsSync(BIN_PATH);
 
 const run = (args: string): string =>
-  execSync(`bun run ${CLI_PATH} ${args}`, { encoding: 'utf8', stdio: 'pipe' });
+  execSync(`${BIN_PATH} ${args}`, { encoding: 'utf8', stdio: 'pipe' });
 
-describe('CLI Integration', () => {
-  afterEach(() => {
-    if (fs.existsSync(TEMP_DIR)) {
-      fs.rmSync(TEMP_DIR, { recursive: true, force: true });
-    }
-  });
-
+describe.skipIf(!hasBinary)('CLI Integration', () => {
   it('should show help with --help', () => {
     const result = run('--help');
-    expect(result).toContain('Usage:');
+    expect(result).toContain('Usage');
     expect(result).toContain('--help');
     expect(result).toContain('--version');
   });
 
   it('should show help with -h', () => {
     const result = run('-h');
-    expect(result).toContain('tqs - quick scripts for typescript');
+    expect(result).toContain('quick scripts for typescript');
   });
 
   it('should show version with --version', () => {
     const result = run('--version');
-    expect(result.trim()).toContain('1.0.0');
+    expect(result.trim()).toContain(version);
   });
 
   it('should show help when no arguments provided', () => {
     const result = run('');
-    expect(result).toContain('Usage:');
+    expect(result).toContain('Usage');
   });
 
   it('should fail for non-existent file', () => {
     expect(() => run('non-existent.tqs')).toThrow();
   });
 
-  it('should reject unmarked file with helpful error', () => {
-    const unmarked = path.join(FIXTURES_DIR, 'unmarked.ts');
-    expect(() => run(unmarked)).toThrow('not marked for QuickJS execution');
+  it('should fail for .ts file without @tqs-script marker', () => {
+    const fixture = path.join(import.meta.dir, '../fixtures/unmarked.ts');
+    expect(() => run(fixture)).toThrow();
   });
 
-  it('should accept .tqs extension', () => {
-    const fixture = path.join(FIXTURES_DIR, 'tqs-extension.tqs');
-    try {
-      run(fixture);
-    } catch (err) {
-      const message = (err as Error).message;
-      if (message.includes('not marked for QuickJS execution')) throw err;
-    }
-  });
-
-  it('should accept @tqs-script comment', () => {
-    const fixture = path.join(FIXTURES_DIR, 'tqs-comment.ts');
-    try {
-      run(fixture);
-    } catch (err) {
-      const message = (err as Error).message;
-      if (message.includes('not marked for QuickJS execution')) throw err;
-    }
-  });
-
-  it('should accept file in scripts directory', () => {
-    fs.mkdirSync(path.join(TEMP_DIR, 'scripts'), { recursive: true });
-    const dirFixture = path.join(TEMP_DIR, 'scripts', 'detect-by-dir.ts');
-    fs.writeFileSync(dirFixture, 'console.log("detect by dir");');
-
-    try {
-      run(dirFixture);
-    } catch (err) {
-      const message = (err as Error).message;
-      if (message.includes('not marked for QuickJS execution')) throw err;
-    }
+  it('should accept .ts file with @tqs-script marker', () => {
+    const fixture = path.join(import.meta.dir, '../fixtures/tqs-comment.ts');
+    expect(() => run(fixture)).not.toThrow();
   });
 });

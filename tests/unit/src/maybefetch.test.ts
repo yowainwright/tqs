@@ -1,11 +1,6 @@
 import { describe, it, expect } from 'bun:test';
-import { fetch, fetchAsync, defaultConfig } from '../../../src/maybefetch.js';
-import type { FetchConfig, NativeBinding } from '../../../src/types.js';
-
-const createMockBinding = (returnValue: string | null): NativeBinding => ({
-  createFetchConfig: () => ({}),
-  maybeFetch: () => returnValue,
-});
+import { maybeFetch, defaultConfig } from '../../../src/maybefetch.js';
+import type { FetchConfig } from '../../../src/types.js';
 
 describe('defaultConfig', () => {
   it('should have expected values', () => {
@@ -19,8 +14,12 @@ describe('defaultConfig', () => {
   });
 });
 
-describe('fetch', () => {
-  it('should return binding result with custom config', () => {
+describe('maybeFetch', () => {
+  it('should throw without global maybefetch', () => {
+    expect(() => maybeFetch('https://example.com')).toThrow('maybefetch is not available');
+  });
+
+  it('should throw with custom config when global unavailable', () => {
     const config: FetchConfig = {
       maxRetries: 2,
       initialDelayMs: 500,
@@ -28,29 +27,6 @@ describe('fetch', () => {
       backoffFactor: 1.5,
       timeoutMs: 5000,
     };
-
-    const result = fetch('https://example.com', config, createMockBinding('response'));
-    expect(result).toBe('response');
-  });
-
-  it('should return null on failure', () => {
-    const result = fetch('https://example.com', defaultConfig, createMockBinding(null));
-    expect(result).toBeNull();
-  });
-
-  it('should throw without binding or global maybefetch', () => {
-    expect(() => fetch('https://example.com')).toThrow('maybefetch is not available');
-  });
-});
-
-describe('fetchAsync', () => {
-  it('should resolve to fetch result', async () => {
-    const result = await fetchAsync('https://example.com', defaultConfig, createMockBinding('async'));
-    expect(result).toBe('async');
-  });
-
-  it('should resolve to null on failure', async () => {
-    const result = await fetchAsync('https://example.com', defaultConfig, createMockBinding(null));
-    expect(result).toBeNull();
+    expect(() => maybeFetch('https://example.com', config)).toThrow('maybefetch is not available');
   });
 });
