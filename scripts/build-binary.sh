@@ -16,6 +16,13 @@ fi
 rm -rf "$BUILD_DIR"
 
 echo "Copying maybefetch sources..."
+for src_file in native/include/maybefetch.h native/src/maybefetch.c native/src/quickjs_maybefetch.c; do
+    if [ ! -f "$src_file" ]; then
+        echo "Error: required source file not found: $src_file"
+        exit 1
+    fi
+done
+
 cp native/include/maybefetch.h "$QUICKJS_DIR/"
 
 sed 's|"../include/maybefetch.h"|"maybefetch.h"|' native/src/maybefetch.c > "$QUICKJS_DIR/maybefetch.c"

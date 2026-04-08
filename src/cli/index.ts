@@ -3,7 +3,7 @@ import { EXIT_SUCCESS, EXIT_FAILURE } from '../constants.js';
 import { parseArgs } from './args.js';
 import { showHelp } from './help.js';
 import { showVersion } from './version.js';
-import { compileAndRun } from '../compiler.js';
+import { compile } from '../compiler.js';
 import { logger } from '../logger.js';
 
 declare const scriptArgs: string[];
@@ -25,7 +25,7 @@ if (shouldShowHelp) {
 
 if (options.scriptFile) {
   try {
-    compileAndRun(options.scriptFile);
+    compile(options.scriptFile);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     logger.error(message);

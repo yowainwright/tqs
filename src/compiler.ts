@@ -36,12 +36,12 @@ const buildBinary = (jsFile: string, outputFile: string): void => {
   }
 };
 
-export const compileAndRun = (inputFile: string): void => {
+export const compile = (inputFile: string): void => {
   const outputFile = stripExtension(inputFile);
-  const isTsExtension = inputFile.endsWith('.ts');
+  const isTsOnly = inputFile.endsWith('.ts');
   const isTypeScript = /\.(ts|tqs)$/.test(inputFile);
 
-  if (isTsExtension && !hasTqsMarker(inputFile)) {
+  if (isTsOnly && !hasTqsMarker(inputFile)) {
     logger.error(`${inputFile} is missing // @tqs-script — add it to mark this file as a tqs script`);
     std.exit(EXIT_FAILURE);
   }
