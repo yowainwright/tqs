@@ -24,22 +24,31 @@ Great for typed, tested scripts that start fast and run fast — think LLM hooks
 
 ## Installation
 
+**macOS**
 ```bash
 brew install yowainwright/tap/tqs
 ```
 
-Requires `libcurl` on your system (pre-installed on macOS, `apt install libcurl4` on Linux).
+**Linux**
+```bash
+apt install libcurl4
+npm install -g tqs
+```
+
+Requires `libcurl` (`apt install libcurl4` on Linux, pre-installed on macOS).
 
 ## Quick Start
 
 ```typescript
+// @tqs-script
 import * as std from 'qjs:std';
 import * as os from 'qjs:os';
+import { maybeFetch } from 'tqs';
 
 const cwd = os.getcwd();
 std.out.puts(`Running from: ${cwd}\n`);
 
-const data = maybefetch('https://httpbin.org/json', 3, 1000, 30000, 2.0, 10000);
+const data = maybeFetch('https://httpbin.org/json');
 if (data) {
   std.out.puts(`Response: ${data}\n`);
 }
@@ -79,6 +88,32 @@ Supported inputs: `.tqs`, `.js`. For `.ts` files, add `// @tqs-script` at the to
 // @tqs-script
 import * as std from 'qjs:std';
 // ...
+```
+
+## TypeScript Types
+
+Add this import to get types for `qjs:std`, `qjs:os`, `maybefetch`, and QuickJS globals in your scripts:
+
+```typescript
+// @tqs-script
+import 'tqs/quickjs';
+import * as std from 'qjs:std';
+import * as os from 'qjs:os';
+```
+
+## CLI Arguments
+
+Scripts receive arguments via `scriptArgs`. The first element is the script path:
+
+```typescript
+// @tqs-script
+import 'tqs/quickjs';
+
+const [, , url] = scriptArgs;
+```
+
+```bash
+tqs my-script.ts https://example.com/api
 ```
 
 ## QuickJS Modules
