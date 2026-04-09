@@ -4,19 +4,21 @@
 [![npm version](https://img.shields.io/npm/v/tqs.svg)](https://www.npmjs.com/package/tqs)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-> Compile TypeScript to standalone native binaries via QuickJS.
+> Compile TypeScript to very fast and very small standalone native binaries via QuickJS.
 
 ```bash
 tqs my-script.ts   # outputs ./my-script — a standalone native binary
 ```
 
-Write TypeScript. Get a self-contained binary with [QuickJS-NG](https://github.com/quickjs-ng/quickjs) embedded and `maybefetch()` for HTTP. No Node.js, no V8, no runtime dependencies.
+Write TypeScript. Get a tiny self-contained binary with [QuickJS-NG](https://github.com/quickjs-ng/quickjs) embedded and `maybefetch()` for HTTP. No Node.js, no V8, no runtime dependencies.
 
 ## Why tqs?
 
+Great for typed, tested scripts that start fast and run fast — think LLM hooks.
+
 - **Native binaries**: `tqs my-script.ts` compiles to a standalone executable — ship it anywhere
-- **Built-in HTTP**: `maybefetch()` provides fetch with retry, backoff, and timeout — zero dependencies
-- **Lightweight**: QuickJS + libcurl. ~1MB binary vs ~60MB for Node.js
+- **Built-in HTTP**: `maybefetch()` provides fetch with retry, backoff, and timeout — zero dependencies; synchronous but fast
+- **Small by default**: ~1MB binary with no build flags or tuning — smaller than a stripped Go or Rust binary with HTTP
 - **Fast startup**: <1ms cold start vs ~40ms for Node.js
 - **Type-safe**: Full TypeScript support with types for `qjs:std`, `qjs:os`, and `maybefetch`
 
@@ -56,7 +58,7 @@ tqs my-script.ts   # creates ./my-script
 
 ```
 my-script.ts
-  → bun build (bundles TypeScript to self-contained JS)
+  → bun run build (bundles TypeScript via tsup to self-contained JS)
   → qjsc (compiles JS + QuickJS runtime + maybefetch into a native binary)
   → ./my-script
 ```
@@ -119,10 +121,24 @@ Use `qjs:std` and `qjs:os` in your scripts. These are available at runtime insid
 
 ## maybefetch
 
-Global HTTP GET with exponential backoff retry. Available in all compiled scripts.
+Synchronous HTTP GET with exponential backoff retry. Available as a global in all compiled scripts — not async, blocks until complete or all retries are exhausted.
 
 ```typescript
-const body = maybefetch(url, maxRetries, initialDelayMs, maxDelayMs, backoffFactor, timeoutMs);
+import { maybeFetch } from 'tqs';
+
+const body = maybeFetch('https://example.com/api');
+
+if (body) {
+  std.out.puts(body);
+}
+```
+
+Override specific defaults with `defaultConfig`:
+
+```typescript
+import { maybeFetch, defaultConfig } from 'tqs';
+
+const body = maybeFetch('https://example.com/api', { ...defaultConfig, maxRetries: 5 });
 ```
 
 | Parameter | Type | Description |
@@ -180,6 +196,40 @@ bun run lint            # Lint
 bun run typecheck       # Type check
 bun test                # Run tests
 ```
+
+## Comparison
+
+### vs JS/TS runtimes
+
+| Tool | Binary Size | Startup | Approach |
+|---|---|---|---|
+| **tqs** | ~1 MB | <1ms | QuickJS native bytecode |
+| Bun compile | ~21–36 MB | ~5–10ms | JSC runtime embedded |
+| Deno compile | ~60–100 MB | ~30–60ms | V8 runtime embedded |
+| Node.js SEA | ~60 MB | ~40ms | V8 (Node) embedded |
+
+### vs compiled languages
+
+| Tool | Binary Size | Startup | Language |
+|---|---|---|---|
+| **tqs** | ~1 MB | <1ms | TypeScript |
+| Rust (stripped, with HTTP) | ~2–3 MB | <1ms | Rust |
+| Go (stripped, with HTTP) | ~5–7 MB | <1ms | Go |
+
+tqs is competitive on binary size and startup with native compiled languages — the tradeoff is no async, no npm ecosystem, and a subset of JS APIs.
+
+### Honest tradeoffs
+
+**tqs is the right tool when:**
+- Binary size and cold-start matter (LLM hooks, git hooks, CI steps, edge deployments)
+- Your script is a synchronous pipeline: read input, call an API, write output
+- You want fast compile times and a small distributable without tuning a Go or Rust build
+- You want to write TypeScript, not Go or Rust
+
+**tqs is not the right tool when:**
+- You need multi-threading or concurrency
+
+---
 
 ## License
 
