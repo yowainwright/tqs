@@ -1,7 +1,7 @@
 {
   "name": "tqs",
   "version": "0.0.1",
-  "description": "quick scripts for typescript",
+  "description": "Compile TypeScript to fast, small standalone native binaries via QuickJS",
   "type": "module",
   "main": "./dist/index.js",
   "bin": {
@@ -12,12 +12,13 @@
     "build:quickjs": "bash scripts/build-binary.sh",
     "build:ts": "tsup",
     "dev": "tsup --watch",
-    "start": "node ./dist/cli.js",
+    "start": "bun ./dist/cli/index.js",
     "lint": "oxlint src",
     "lint:fix": "oxlint --fix src",
     "typecheck": "tsc --noEmit",
     "test": "bun test",
-    "prepare": "bun run build:ts",
+    "install-hooks": "bash scripts/install-hooks.sh",
+    "prepare": "bash scripts/install-hooks.sh && bun run build:ts",
     "release": "release-it"
   },
   "keywords": [
@@ -58,7 +59,6 @@
     "./types": "./src/types.ts"
   },
   "engines": {
-    "node": ">=24.0.0",
     "bun": ">=1.0.0"
   },
   "release-it": {

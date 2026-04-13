@@ -64,20 +64,9 @@ export interface QuickJSOS {
     atime: number;
     ctime: number;
   };
-  exec(args: string[], env?: Record<string, string>): number;
+  exec(args: string[], options?: { block?: boolean; env?: Record<string, string> }): number;
   waitpid(pid: number, options?: number): [number, number];
   kill(pid: number, signal: number): number;
   sleep(ms: number): void;
   platform: string;
-}
-
-export interface NativeBinding {
-  createFetchConfig: (
-    maxRetries: number,
-    initialDelayMs: number,
-    maxDelayMs: number,
-    backoffFactor: number,
-    timeoutMs: number
-  ) => Record<string, unknown>;
-  maybeFetch: (url: string, config: Record<string, unknown>) => string | null;
 }

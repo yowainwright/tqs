@@ -22,7 +22,7 @@ const buildJs = (inputFile: string): string => {
   const outFile = toJsPath(inputFile);
   const result = exec(['bun', 'build', '--target', 'browser', '--outfile', outFile, inputFile]);
   if (result !== 0) {
-    std.err.puts(`build failed: ${inputFile}\n`);
+    logger.error(`build failed: ${inputFile}`);
     std.exit(EXIT_FAILURE);
   }
   return outFile;
@@ -31,7 +31,7 @@ const buildJs = (inputFile: string): string => {
 const buildBinary = (jsFile: string, outputFile: string): void => {
   const result = exec(['qjsc', '-o', outputFile, jsFile]);
   if (result !== 0) {
-    std.err.puts(`qjsc failed: ${jsFile}\n`);
+    logger.error(`qjsc failed: ${jsFile}`);
     std.exit(EXIT_FAILURE);
   }
 };

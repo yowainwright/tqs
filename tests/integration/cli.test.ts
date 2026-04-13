@@ -23,7 +23,7 @@ describe.skipIf(!hasBinary)('CLI Integration', () => {
 
   it('should show help with -h', () => {
     const result = run('-h');
-    expect(result).toContain('quick scripts for typescript');
+    expect(result).toContain('compile typescript');
   });
 
   it('should show version with --version', () => {
