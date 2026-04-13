@@ -27,7 +27,7 @@ export default defineConfig([
   },
   {
     ...shared,
-    entry: ['src/cli/index.ts'],
+    entry: { 'cli/index': 'src/cli/index.ts' },
     dts: false,
   },
 ]);
