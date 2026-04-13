@@ -1,10 +1,10 @@
-import * as std from 'qjs:std';
-import { EXIT_SUCCESS, EXIT_FAILURE } from '../constants.js';
-import { parseArgs } from './args.js';
-import { showHelp } from './help.js';
-import { showVersion } from './version.js';
-import { compile } from '../compiler.js';
-import { logger } from '../logger.js';
+import * as std from "qjs:std";
+import { EXIT_SUCCESS, EXIT_FAILURE } from "../constants.js";
+import { parseArgs } from "./args.js";
+import { showHelp } from "./help.js";
+import { showVersion } from "./version.js";
+import { compile } from "../compiler.js";
+import { logger } from "../logger.js";
 
 declare const scriptArgs: string[];
 

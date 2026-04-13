@@ -4,6 +4,6 @@ export type {
   QuickJSOS,
   Logger,
   CliOptions,
-  ParsedArgs
-} from './types.js';
-export { maybeFetch, defaultConfig } from './maybefetch.js';
+  ParsedArgs,
+} from "./types.js";
+export { maybeFetch, defaultConfig } from "./maybefetch.js";

@@ -1,13 +1,22 @@
-import * as std from 'qjs:std';
-import type { Logger } from './types.js';
-import { RESET, BOLD, DIM, RED, GREEN, CYAN, CHAR_SUCCESS, CHAR_ERROR, CHAR_STEP } from './constants.js';
+import * as std from "qjs:std";
+import type { Logger } from "./types.js";
+import {
+  RESET,
+  BOLD,
+  DIM,
+  RED,
+  GREEN,
+  CYAN,
+  CHAR_SUCCESS,
+  CHAR_ERROR,
+  CHAR_STEP,
+} from "./constants.js";
 
-const colorEnabled = std.getenv('NO_COLOR') === null;
+const colorEnabled = std.getenv("NO_COLOR") === null;
 
-const c = (code: string, text: string): string =>
-  colorEnabled ? `${code}${text}${RESET}` : text;
+const c = (code: string, text: string): string => (colorEnabled ? `${code}${text}${RESET}` : text);
 
-export const spaces = (count: number): string => ' '.repeat(Math.max(0, count));
+export const spaces = (count: number): string => " ".repeat(Math.max(0, count));
 
 export const pad = (str: string, width: number): string =>
   str + spaces(Math.max(0, width - str.length));
