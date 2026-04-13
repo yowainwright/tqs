@@ -15,7 +15,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install system dependencies
-        run: sudo apt-get update && sudo apt-get install -y libcurl4-openssl-dev
+        run: sudo apt-get update && sudo apt-get install -y libcurl4-openssl-dev cmake
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
@@ -33,6 +33,35 @@ jobs:
 
       - name: Build TypeScript
         run: bun run build:ts
+
+      - name: Build native binary
+        run: bash scripts/build-binary.sh
+
+      - name: Test
+        run: bun run test
+
+  test-macos:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: brew install curl cmake
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Build native binary
+        run: |
+          export EXTRA_CMAKE_OPTS="-DCMAKE_PREFIX_PATH=$(brew --prefix curl)"
+          bash scripts/build-binary.sh
 
       - name: Test
         run: bun run test

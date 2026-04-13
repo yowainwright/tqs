@@ -263,6 +263,9 @@ tqs is competitive on binary size and startup with native compiled languages —
 
 **tqs is not the right tool when:**
 - You need multi-threading or concurrency
+- You need the npm ecosystem or async I/O
+- Your script uses Node.js built-ins (`fs`, `path`, `http`, etc.)
+- You need error handling beyond synchronous retries
 
 ---
 

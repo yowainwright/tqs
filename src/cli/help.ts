@@ -7,7 +7,7 @@ export const showHelp = (): void => {
   logger.info(`${color.bold(CLI_NAME)}  ${color.dim(CLI_DESCRIPTION)}`);
   logger.info('');
   logger.info(color.cyan('Usage'));
-  logger.info(`  ${pad(`${CLI_NAME} <script>`, COLUMN_WIDTH)}Compile and run TypeScript with QuickJS`);
+  logger.info(`  ${pad(`${CLI_NAME} <script>`, COLUMN_WIDTH)}Compile TypeScript to a native binary`);
   logger.info(`  ${pad(`${CLI_NAME} --help`, COLUMN_WIDTH)}Show this help`);
   logger.info(`  ${pad(`${CLI_NAME} --version`, COLUMN_WIDTH)}Show version`);
   logger.info('');
@@ -16,5 +16,5 @@ export const showHelp = (): void => {
   logger.info('');
   logger.info(color.cyan('Available in scripts'));
   logger.info(`  ${color.dim('QuickJS standard library (std, os)')}`);
-  logger.info(`  ${color.dim('maybefetch(url, maxRetries, initialDelayMs, maxDelayMs, backoffFactor, timeoutMs)')}`);
+  logger.info(`  ${color.dim('maybeFetch(url, config?)')}`);
 };
