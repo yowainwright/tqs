@@ -38,7 +38,7 @@ commit_msg_hook() {
   cat << 'EOF'
 #!/bin/bash
 commit_msg=$(cat "$1")
-pattern='^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\(.+\))?: .{1,}'
+pattern='^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\(.+\))?!?: .{1,}'
 if ! echo "$commit_msg" | grep -qE "$pattern"; then
   echo "x invalid commit message: expected <type>(<scope>): <message>"
   echo "  types: feat fix docs style refactor perf test build ci chore revert"
@@ -64,6 +64,7 @@ install_hook() {
   local hook_path="$hooks_dir/$hook_name"
 
   if hook_exists "$hooks_dir" "$hook_name"; then
+    echo "> $hook_name exists, skipping (delete $hooks_dir/$hook_name to reinstall)"
     return 0
   fi
 
