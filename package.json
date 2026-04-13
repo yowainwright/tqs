@@ -17,7 +17,8 @@
     "lint:fix": "oxlint --fix src",
     "typecheck": "tsc --noEmit",
     "test": "bun test",
-    "prepare": "bun run build:ts",
+    "install-hooks": "bash scripts/install-hooks.sh",
+    "prepare": "bash scripts/install-hooks.sh && bun run build:ts",
     "release": "release-it"
   },
   "keywords": [
