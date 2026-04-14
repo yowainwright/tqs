@@ -1,7 +1,7 @@
 # tqs
 
 [![CI](https://github.com/yowainwright/tqs/actions/workflows/ci.yml/badge.svg)](https://github.com/yowainwright/tqs/actions/workflows/ci.yml)
-[![npm version](https://img.shields.io/npm/v/tqs.svg)](https://www.npmjs.com/package/tqs)
+[![npm version](https://img.shields.io/npm/v/tqs-cli.svg)](https://www.npmjs.com/package/tqs-cli)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 > Compile TypeScript to very fast and very small standalone native binaries via QuickJS.
@@ -29,10 +29,15 @@ Great for typed, tested scripts that start fast and run fast — think LLM hooks
 brew install yowainwright/tap/tqs
 ```
 
-**Linux**
+**Linux (CLI)**
 ```bash
 apt install libcurl4
-npm install -g tqs
+npm install -g tqs-cli
+```
+
+**Linux (library)**
+```bash
+npm install tqs@npm:tqs-cli
 ```
 
 Requires `libcurl` (`apt install libcurl4` on Linux, pre-installed on macOS).
@@ -67,7 +72,7 @@ tqs my-script.ts   # creates ./my-script
 
 ```
 my-script.ts
-  → bun run build (bundles TypeScript via tsup to self-contained JS)
+  → bun build (bundles TypeScript to self-contained JS)
   → qjsc (compiles JS + QuickJS runtime + maybefetch into a native binary)
   → ./my-script
 ```
@@ -226,7 +231,7 @@ Typed wrapper around the `maybefetch` global. Only available in compiled QuickJS
 ```bash
 bun install
 bun run build:quickjs   # Build QuickJS-NG + maybefetch + tqs binary
-bun run build:ts        # Build TypeScript (tsup)
+bun run build:ts        # Build TypeScript
 bun run lint            # Lint
 bun run typecheck       # Type check
 bun test                # Run tests
