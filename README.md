@@ -1,7 +1,6 @@
 # tqs
 
 [![CI](https://github.com/yowainwright/tqs/actions/workflows/ci.yml/badge.svg)](https://github.com/yowainwright/tqs/actions/workflows/ci.yml)
-[![npm version](https://img.shields.io/npm/v/tqs-cli.svg)](https://www.npmjs.com/package/tqs-cli)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 > Compile TypeScript to very fast and very small standalone native binaries via QuickJS.
@@ -29,15 +28,11 @@ Great for typed, tested scripts that start fast and run fast — think LLM hooks
 brew install yowainwright/tap/tqs
 ```
 
-**Linux (CLI)**
+**Linux**
 ```bash
-apt install libcurl4
-npm install -g tqs-cli
-```
-
-**Linux (library — keeps `import { maybeFetch } from 'tqs'` working)**
-```bash
-npm install tqs@npm:tqs-cli
+apt install libcurl4 cmake
+git clone https://github.com/yowainwright/tqs.git
+cd tqs && bun install && bun run build
 ```
 
 Requires `libcurl` (`apt install libcurl4` on Linux, pre-installed on macOS).
