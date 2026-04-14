@@ -26,8 +26,6 @@ jobs:
         include:
           - os: macos-latest
             target: darwin-arm64
-          - os: macos-13
-            target: darwin-x64
           - os: ubuntu-latest
             target: linux-x64
 
@@ -76,7 +74,6 @@ jobs:
       - name: Compute SHA256 hashes
         run: |
           echo "SHA_DARWIN_ARM64=$(sha256sum /tmp/release/tqs-darwin-arm64 | awk '{print $1}')" >> $GITHUB_ENV
-          echo "SHA_DARWIN_X64=$(sha256sum /tmp/release/tqs-darwin-x64 | awk '{print $1}')" >> $GITHUB_ENV
           echo "SHA_LINUX_X64=$(sha256sum /tmp/release/tqs-linux-x64 | awk '{print $1}')" >> $GITHUB_ENV
 
       - name: Checkout homebrew tap
@@ -93,7 +90,6 @@ jobs:
           cd homebrew-tap
           sed -i "s/  version \".*\"/  version \"$VERSION_NUM\"/" Formula/tqs.rb
           sed -i "/tqs-darwin-arm64\"/{n;s/sha256 \"[^\"]*\"/sha256 \"$SHA_DARWIN_ARM64\"/}" Formula/tqs.rb
-          sed -i "/tqs-darwin-x64\"/{n;s/sha256 \"[^\"]*\"/sha256 \"$SHA_DARWIN_X64\"/}" Formula/tqs.rb
           sed -i "/tqs-linux-x64\"/{n;s/sha256 \"[^\"]*\"/sha256 \"$SHA_LINUX_X64\"/}" Formula/tqs.rb
 
       - name: Commit and push
