@@ -8,7 +8,7 @@
     "tqs": "./dist/cli/index.js"
   },
   "scripts": {
-    "build": "npm run build:quickjs && npm run build:ts",
+    "build": "bun run build:quickjs && bun run build:ts",
     "build:quickjs": "bash scripts/build-binary.sh",
     "build:ts": "bash scripts/build-ts.sh",
     "start": "bun ./dist/cli/index.js",
