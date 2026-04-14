@@ -1,6 +1,6 @@
 {
   "name": "tqs-cli",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "description": "Compile TypeScript to fast, small standalone native binaries via QuickJS",
   "type": "module",
   "main": "./dist/index.js",
