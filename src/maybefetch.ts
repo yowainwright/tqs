@@ -1,6 +1,6 @@
-import type { FetchConfig } from './types.js';
+import type { FetchConfig } from "./types.js";
 
-export type { FetchConfig } from './types.js';
+export type { FetchConfig } from "./types.js";
 
 export const defaultConfig: FetchConfig = {
   maxRetries: 3,
@@ -12,12 +12,12 @@ export const defaultConfig: FetchConfig = {
 
 const callGlobal = (url: string, config: FetchConfig): string | null => {
   const global = globalThis as Record<string, unknown>;
-  const maybefetchFn = global['maybefetch'] as
+  const maybefetchFn = global["maybefetch"] as
     | ((url: string, ...args: number[]) => string | null)
     | undefined;
 
   if (!maybefetchFn) {
-    throw new Error('maybefetch is not available. Run in a compiled QuickJS binary.');
+    throw new Error("maybefetch is not available. Run in a compiled QuickJS binary.");
   }
 
   return maybefetchFn(
@@ -26,12 +26,9 @@ const callGlobal = (url: string, config: FetchConfig): string | null => {
     config.initialDelayMs,
     config.maxDelayMs,
     config.backoffFactor,
-    config.timeoutMs
+    config.timeoutMs,
   );
 };
 
-export const maybeFetch = (
-  url: string,
-  config: FetchConfig = defaultConfig,
-): string | null => callGlobal(url, config);
-
+export const maybeFetch = (url: string, config: FetchConfig = defaultConfig): string | null =>
+  callGlobal(url, config);

@@ -1,17 +1,14 @@
-import * as os from 'qjs:os';
-import * as std from 'qjs:std';
-import { EXIT_FAILURE } from './constants.js';
-import { logger } from './logger.js';
-import { isTqsScript } from './marker.js';
+import * as os from "qjs:os";
+import * as std from "qjs:std";
+import { EXIT_FAILURE } from "./constants.js";
+import { logger } from "./logger.js";
+import { isTqsScript } from "./marker.js";
 
-const stripExtension = (filePath: string): string =>
-  filePath.replace(/\.(ts|tqs|js)$/, '');
+const stripExtension = (filePath: string): string => filePath.replace(/\.(ts|tqs|js)$/, "");
 
-const toJsPath = (filePath: string): string =>
-  filePath.replace(/\.(ts|tqs)$/, '.js');
+const toJsPath = (filePath: string): string => filePath.replace(/\.(ts|tqs)$/, ".js");
 
-const exec = (args: string[]): number =>
-  os.exec(args, { block: true });
+const exec = (args: string[]): number => os.exec(args, { block: true });
 
 const hasTqsMarker = (filePath: string): boolean => {
   const file = std.loadFile(filePath);
@@ -20,7 +17,7 @@ const hasTqsMarker = (filePath: string): boolean => {
 
 const buildJs = (inputFile: string): string => {
   const outFile = toJsPath(inputFile);
-  const result = exec(['bun', 'build', '--target', 'browser', '--outfile', outFile, inputFile]);
+  const result = exec(["bun", "build", "--target", "browser", "--outfile", outFile, inputFile]);
   if (result !== 0) {
     logger.error(`build failed: ${inputFile}`);
     std.exit(EXIT_FAILURE);
@@ -29,7 +26,7 @@ const buildJs = (inputFile: string): string => {
 };
 
 const buildBinary = (jsFile: string, outputFile: string): void => {
-  const result = exec(['qjsc', '-o', outputFile, jsFile]);
+  const result = exec(["qjsc", "-o", outputFile, jsFile]);
   if (result !== 0) {
     logger.error(`qjsc failed: ${jsFile}`);
     std.exit(EXIT_FAILURE);
@@ -38,11 +35,13 @@ const buildBinary = (jsFile: string, outputFile: string): void => {
 
 export const compile = (inputFile: string): void => {
   const outputFile = stripExtension(inputFile);
-  const isTsOnly = inputFile.endsWith('.ts');
+  const isTsOnly = inputFile.endsWith(".ts");
   const isTypeScript = /\.(ts|tqs)$/.test(inputFile);
 
   if (isTsOnly && !hasTqsMarker(inputFile)) {
-    logger.error(`${inputFile} is missing // @tqs-script — add it to mark this file as a tqs script`);
+    logger.error(
+      `${inputFile} is missing // @tqs-script — add it to mark this file as a tqs script`,
+    );
     std.exit(EXIT_FAILURE);
   }
 
