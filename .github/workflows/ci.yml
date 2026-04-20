@@ -28,6 +28,9 @@ jobs:
       - name: Lint
         run: bun run lint
 
+      - name: Stage QuickJS Sources
+        run: bun run stage:quickjs
+
       - name: Type check
         run: bun run typecheck
 
@@ -36,3 +39,6 @@ jobs:
 
       - name: Test
         run: bun run test
+
+      - name: Smoke test packed artifact
+        run: bun run smoke:pack

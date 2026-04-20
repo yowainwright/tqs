@@ -146,6 +146,8 @@ integration-test-files/
 dist/
 build/
 bin/
+deps/quickjs-ng/
 quickjs-ng/
+vendor/
 /*.js
 .next/

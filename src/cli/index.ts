@@ -1,8 +1,11 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { EXIT_SUCCESS, EXIT_FAILURE } from '../constants.js';
 import { parseArgs } from './args.js';
 import { showHelp } from './help.js';
 import { showVersion } from './version.js';
-import { compileAndRun } from '../compiler.js';
+import { buildExecutable, compileAndRun } from '../compiler.js';
 import { logger } from '../logger.js';
 
 const shouldShowHelp = (args: readonly string[], helpFlag: boolean): boolean =>
@@ -24,14 +27,36 @@ export const main = (): void => {
     return;
   }
 
+  if (!options.scriptFile) {
+    throw new Error('No script file provided');
+  }
+
+  if (options.outputFile) {
+    buildExecutable(options.scriptFile, options.outputFile);
+    return;
+  }
+
   if (options.scriptFile) {
     compileAndRun(options.scriptFile);
   }
 };
 
-const isEntryPoint = import.meta.url === `file://${process.argv[1]}`;
+const isEntryPoint = (): boolean => {
+  const entryPath = process.argv[1];
+  if (!entryPath) {
+    return false;
+  }
 
-if (isEntryPoint) {
+  const currentModulePath = fileURLToPath(import.meta.url);
+
+  try {
+    return fs.realpathSync(currentModulePath) === fs.realpathSync(path.resolve(entryPath));
+  } catch {
+    return currentModulePath === path.resolve(entryPath);
+  }
+};
+
+if (isEntryPoint()) {
   try {
     main();
     process.exit(EXIT_SUCCESS);

@@ -1,161 +1,97 @@
 #!/bin/bash
-set -e
+set -euo pipefail
 
-QUICKJS_DIR="quickjs-ng"
-QUICKJS_REPO="https://github.com/quickjs-ng/quickjs.git"
-BUILD_DIR="$QUICKJS_DIR/build"
-ROOT_DIR="$(pwd)"
+# shellcheck source=./lib/common.sh
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib/common.sh"
 
-echo "Building QuickJS-NG with maybefetch extension..."
-
-if [ ! -d "$QUICKJS_DIR" ]; then
-    echo "Cloning QuickJS-NG..."
-    git clone --depth=1 "$QUICKJS_REPO" "$QUICKJS_DIR"
-fi
-
-rm -rf "$BUILD_DIR"
-
-echo "Copying maybefetch sources..."
-cp native/include/maybefetch.h "$QUICKJS_DIR/"
-
-sed 's|"../include/maybefetch.h"|"maybefetch.h"|' native/src/maybefetch.c > "$QUICKJS_DIR/maybefetch.c"
-sed 's|"../include/maybefetch.h"|"maybefetch.h"|' native/src/quickjs_maybefetch.c > "$QUICKJS_DIR/quickjs_maybefetch.c"
-
-cat > "$QUICKJS_DIR/tqs_main.c" << 'MAINEOF'
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-
-#include "cutils.h"
-#include "quickjs.h"
-#include "quickjs-libc.h"
-#include "maybefetch.h"
-
-extern void js_std_add_maybefetch(JSContext *ctx);
-
-static int eval_file(JSContext *ctx, const char *filename, int is_module)
-{
-    size_t buf_len;
-    uint8_t *buf = js_load_file(ctx, &buf_len, filename);
-    if (!buf) {
-        fprintf(stderr, "tqs: could not load '%s'\n", filename);
-        return -1;
-    }
-
-    int flags = is_module ? JS_EVAL_TYPE_MODULE : JS_EVAL_TYPE_GLOBAL;
-    JSValue val = JS_Eval(ctx, (char *)buf, buf_len, filename, flags);
-    js_free(ctx, buf);
-
-    if (JS_IsException(val)) {
-        JS_FreeValue(ctx, val);
-        return -1;
-    }
-    JS_FreeValue(ctx, val);
-    return 0;
+default_deps_dir() {
+  local root_dir="${1:-$(repo_root "${BASH_SOURCE[0]}")}"
+  printf '%s\n' "$root_dir/deps/quickjs-ng"
 }
 
-int main(int argc, char **argv)
-{
-    JSRuntime *rt;
-    JSContext *ctx;
-    int r;
-
-    if (argc < 2) {
-        fprintf(stderr, "Usage: tqs <script.js>\n");
-        return 1;
-    }
-
-    rt = JS_NewRuntime();
-    if (!rt) {
-        fprintf(stderr, "tqs: cannot allocate JS runtime\n");
-        return 2;
-    }
-
-    js_std_init_handlers(rt);
-
-    ctx = JS_NewContext(rt);
-    if (!ctx) {
-        fprintf(stderr, "tqs: cannot allocate JS context\n");
-        return 2;
-    }
-
-    js_init_module_std(ctx, "qjs:std");
-    js_init_module_os(ctx, "qjs:os");
-    js_init_module_std(ctx, "std");
-    js_init_module_os(ctx, "os");
-
-    JS_SetModuleLoaderFunc2(rt, NULL, js_module_loader, js_module_check_attributes, NULL);
-    JS_SetHostPromiseRejectionTracker(rt, js_std_promise_rejection_tracker, NULL);
-
-    js_std_add_helpers(ctx, argc - 1, argv + 1);
-    js_std_add_maybefetch(ctx);
-
-    const char *filename = argv[1];
-
-    size_t peek_len;
-    uint8_t *peek_buf = js_load_file(ctx, &peek_len, filename);
-    if (!peek_buf) {
-        fprintf(stderr, "tqs: could not load '%s'\n", filename);
-        js_std_free_handlers(rt);
-        JS_FreeContext(ctx);
-        JS_FreeRuntime(rt);
-        return 1;
-    }
-    int is_module = JS_DetectModule((const char *)peek_buf, peek_len);
-    js_free(ctx, peek_buf);
-
-    if (eval_file(ctx, filename, is_module)) {
-        js_std_dump_error(ctx);
-        js_std_free_handlers(rt);
-        JS_FreeContext(ctx);
-        JS_FreeRuntime(rt);
-        return 1;
-    }
-
-    r = js_std_loop(ctx);
-    if (r) {
-        js_std_dump_error(ctx);
-    }
-
-    js_std_free_handlers(rt);
-    JS_FreeContext(ctx);
-    JS_FreeRuntime(rt);
-    return r ? 1 : 0;
+default_output_dir() {
+  local root_dir="${1:-$(repo_root "${BASH_SOURCE[0]}")}"
+  printf '%s\n' "$root_dir/bin"
 }
-MAINEOF
 
-if ! grep -q "tqs_exe" "$QUICKJS_DIR/CMakeLists.txt"; then
-cat >> "$QUICKJS_DIR/CMakeLists.txt" << 'CMAKEEOF'
+default_output_path() {
+  local output_dir="${1:-$(default_output_dir)}"
+  printf '%s\n' "$output_dir/qjsc"
+}
 
-# --- tqs: QuickJS with maybefetch ---
-find_library(CURL_LIB curl)
-find_path(CURL_INCLUDE curl/curl.h)
-if(CURL_LIB AND CURL_INCLUDE)
-    add_executable(tqs_exe
-        tqs_main.c
-        maybefetch.c
-        quickjs_maybefetch.c
-    )
-    target_include_directories(tqs_exe PRIVATE ${CURL_INCLUDE} ${CMAKE_CURRENT_SOURCE_DIR})
-    target_compile_definitions(tqs_exe PRIVATE ${qjs_defines} _GNU_SOURCE)
-    target_link_libraries(tqs_exe PRIVATE qjs qjs-libc ${CURL_LIB} m)
-    set_target_properties(tqs_exe PROPERTIES OUTPUT_NAME "tqs")
-else()
-    message(WARNING "libcurl not found, skipping tqs build")
-endif()
-CMAKEEOF
+default_cc_bin() {
+  printf '%s\n' "${1:-${CC:-cc}}"
+}
+
+default_version() {
+  printf '%s\n' "${1:-tqs}"
+}
+
+ensure_staged_sources() {
+  local deps_dir="${1:-$(default_deps_dir)}"
+  [ -f "$deps_dir/quickjs.c" ] || {
+    echo "Staged QuickJS sources not found at $deps_dir. Run 'npm run stage:quickjs' first." >&2
+    return 1
+  }
+}
+
+ensure_output_dir() {
+  local output_dir="${1:-$(default_output_dir)}"
+  ensure_dir "$output_dir"
+}
+
+qjsc_source_args() {
+  printf '%s\n' qjsc.c quickjs.c quickjs-libc.c libregexp.c libunicode.c dtoa.c
+}
+
+qjsc_link_args() {
+  printf '%s\n' -lm -ldl -lpthread
+}
+
+compile_qjsc_sources() {
+  local output_path="${1:?output_path is required}"
+  local cc_bin="${2:-$(default_cc_bin)}"
+  local version="${3:-$(default_version)}"
+
+  "$cc_bin" -D_GNU_SOURCE "-DCONFIG_VERSION=\"$version\"" -I. $(qjsc_source_args) $(qjsc_link_args) -o "$output_path"
+}
+
+build_qjsc() {
+  local deps_dir="${1:?deps_dir is required}"
+  local output_path="${2:?output_path is required}"
+  local cc_bin="${3:-$(default_cc_bin)}"
+  local version="${4:-$(default_version)}"
+
+  (
+    cd "$deps_dir"
+    compile_qjsc_sources "$output_path" "$cc_bin" "$version"
+  )
+}
+
+announce_build_start() {
+  echo "Building QuickJS compiler from staged sources..."
+}
+
+announce_build_complete() {
+  local output_path="${1:?output_path is required}"
+  echo "Built $output_path"
+}
+
+main() {
+  local root_dir="${1:-${ROOT_DIR:-$(repo_root "${BASH_SOURCE[0]}")}}"
+  local deps_dir="${2:-${DEPS_DIR:-$(default_deps_dir "$root_dir")}}"
+  local output_dir="${3:-${OUTPUT_DIR:-$(default_output_dir "$root_dir")}}"
+  local output_path="${4:-${OUTPUT_PATH:-$(default_output_path "$output_dir")}}"
+  local cc_bin="${5:-${CC_BIN:-$(default_cc_bin)}}"
+  local version="${6:-${VERSION:-$(default_version)}}"
+
+  ensure_staged_sources "$deps_dir"
+  ensure_output_dir "$output_dir"
+  announce_build_start
+  build_qjsc "$deps_dir" "$output_path" "$cc_bin" "$version"
+  announce_build_complete "$output_path"
+}
+
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+  main "$@"
 fi
-
-echo "Building with cmake..."
-mkdir -p "$BUILD_DIR"
-cd "$BUILD_DIR"
-cmake .. -DCMAKE_BUILD_TYPE=Release
-cmake --build . --target tqs_exe -j$(nproc 2>/dev/null || sysctl -n hw.ncpu)
-
-echo "Copying binary..."
-cd "$ROOT_DIR"
-mkdir -p bin
-cp "$BUILD_DIR/tqs" bin/
-
-echo "QuickJS with maybefetch built successfully!"
-echo "Binary: bin/tqs"

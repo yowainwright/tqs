@@ -4,19 +4,21 @@
 [![npm version](https://img.shields.io/npm/v/tqs.svg)](https://www.npmjs.com/package/tqs)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-> TypeScript scripts on QuickJS with built-in HTTP fetching.
+> Build TypeScript-flavored QuickJS scripts into standalone executables with built-in HTTP fetching.
 
 ```bash
-tqs my-script.tqs
+tqs my-script.tqs -o my-script
+./my-script
 ```
 
-Write TypeScript. Run it on [QuickJS-NG](https://github.com/nicehash/nicehash-quickjs-ng) with `maybefetch()` for HTTP requests. No Node.js runtime needed.
+Write TypeScript. Bundle it with Bun, embed it in [QuickJS-NG](https://github.com/nicehash/nicehash-quickjs-ng), and produce a standalone executable with `maybefetch()` for HTTP requests.
 
 ## Why tqs?
 
-- **TypeScript on QuickJS**: Write `.tqs` files with full type safety, compile and run on QuickJS
+- **TypeScript on QuickJS**: Write `.tqs` or `.tsq` files with full type safety, then build native executables
 - **Built-in HTTP**: `maybefetch()` provides fetch with retry, backoff, and timeout -- no dependencies
-- **Lightweight**: QuickJS binary + libcurl. No V8, no Node.js
+- **Controlled builds**: A pinned QuickJS snapshot is staged into `deps/quickjs-ng/` during packaging, so publish output is deterministic without tracking upstream source in git
+- **Lightweight**: QuickJS + libcurl. No V8, no Node.js
 - **Type-safe**: Global types for QuickJS `std`/`os` modules and `maybefetch`. Node.js modules are blocked with helpful errors
 
 ## Installation
@@ -26,6 +28,7 @@ bun add -g tqs
 ```
 
 Requires libcurl installed on your system.
+Building a standalone executable also requires a working C toolchain on your machine.
 
 ## Quick Start
 
@@ -46,10 +49,11 @@ if (data) {
 std.exit(0);
 ```
 
-Run it:
+Build it:
 
 ```bash
-tqs my-script.tqs
+tqs my-script.tqs -o my-script
+./my-script
 ```
 
 ## File Detection
@@ -58,16 +62,17 @@ tqs recognizes QuickJS scripts three ways:
 
 | Method | Example |
 |--------|---------|
-| `.tqs` extension | `script.tqs` |
+| `.tqs` or `.tsq` extension | `script.tqs` |
 | `// @tqs-script` comment | First 5 lines of any `.ts` file |
 | Directory convention | Files in `scripts/`, `quickjs/`, or `tqs/` directories |
 
 ## CLI
 
 ```bash
-tqs <script>        # Compile and run a script
-tqs --help          # Show help
-tqs --version       # Show version
+tqs <script>             # Build and run a script
+tqs <script> -o <name>   # Build a standalone executable
+tqs --help               # Show help
+tqs --version            # Show version
 ```
 
 ## API
@@ -197,6 +202,7 @@ Importing Node.js modules in `.tqs` files produces compile-time errors with sugg
 
 ```bash
 bun install
+bun run stage:quickjs    # stage the pinned QuickJS snapshot into deps/quickjs-ng/
 bun run build:ts        # Build TypeScript
 bun run lint             # Lint
 bun run typecheck        # Type check

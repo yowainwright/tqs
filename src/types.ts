@@ -5,6 +5,7 @@ export interface CliOptions {
 
 export interface ParsedArgs extends CliOptions {
   readonly scriptFile?: string | undefined;
+  readonly outputFile?: string | undefined;
 }
 
 export interface FetchConfig {

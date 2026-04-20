@@ -22,6 +22,7 @@ describe('CLI Integration', () => {
     expect(result).toContain('Usage:');
     expect(result).toContain('--help');
     expect(result).toContain('--version');
+    expect(result).toContain('-o <output>');
   });
 
   it('should show help with -h', () => {
@@ -79,5 +80,21 @@ describe('CLI Integration', () => {
       const message = (err as Error).message;
       if (message.includes('not marked for QuickJS execution')) throw err;
     }
+  });
+
+  it('should build a standalone executable with -o', () => {
+    fs.mkdirSync(TEMP_DIR, { recursive: true });
+    const scriptPath = path.join(TEMP_DIR, 'build-me.tsq');
+    const outputPath = path.join(TEMP_DIR, 'build-me');
+
+    fs.writeFileSync(
+      scriptPath,
+      'import * as std from "std";\nstd.printf("standalone build works\\n");\n'
+    );
+
+    run(`${scriptPath} -o ${outputPath}`);
+
+    const result = execSync(outputPath, { encoding: 'utf8', stdio: 'pipe' });
+    expect(result).toContain('standalone build works');
   });
 });
