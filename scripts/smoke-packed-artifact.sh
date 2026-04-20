@@ -170,6 +170,69 @@ cleanup_command() {
   printf 'remove_file_if_present %q; cleanup_dir %q' "$tarball_path" "$tmp_dir"
 }
 
+marker_path() {
+  local tmp_dir="${1:?tmp_dir is required}"
+  local marker_name="${2:?marker_name is required}"
+  printf '%s\n' "$tmp_dir/$marker_name"
+}
+
+record_absent_path() {
+  local target_path="${1:?target_path is required}"
+  local marker_file="${2:?marker_file is required}"
+
+  if [ ! -e "$target_path" ]; then
+    printf '%s\n' "$target_path" > "$marker_file"
+  fi
+}
+
+cleanup_marked_path() {
+  local marker_file="${1:?marker_file is required}"
+  local target_path=""
+
+  if [ ! -f "$marker_file" ]; then
+    return
+  fi
+
+  target_path="$(cat "$marker_file")"
+  remove_file_if_present "$target_path"
+  remove_dir_if_present "$target_path"
+}
+
+tracked_dist_path() {
+  local root_dir="${1:?root_dir is required}"
+  printf '%s\n' "$root_dir/dist"
+}
+
+tracked_quickjs_path() {
+  local root_dir="${1:?root_dir is required}"
+  printf '%s\n' "$root_dir/deps/quickjs-ng"
+}
+
+track_repo_outputs() {
+  local root_dir="${1:?root_dir is required}"
+  local tmp_dir="${2:?tmp_dir is required}"
+  record_absent_path "$(tracked_dist_path "$root_dir")" "$(marker_path "$tmp_dir" dist.marker)"
+  record_absent_path "$(tracked_quickjs_path "$root_dir")" "$(marker_path "$tmp_dir" quickjs.marker)"
+}
+
+repo_cleanup_command() {
+  local root_dir="${1:?root_dir is required}"
+  local tmp_dir="${2:?tmp_dir is required}"
+  printf 'cleanup_marked_path %q; cleanup_marked_path %q; remove_dir_if_empty %q' \
+    "$(marker_path "$tmp_dir" dist.marker)" \
+    "$(marker_path "$tmp_dir" quickjs.marker)" \
+    "$root_dir/deps"
+}
+
+smoke_cleanup_command() {
+  local root_dir="${1:?root_dir is required}"
+  local tarball_path="${2:-}"
+  local tmp_dir="${3:?tmp_dir is required}"
+  printf '%s; %s' \
+    "$(repo_cleanup_command "$root_dir" "$tmp_dir")" \
+    "$(cleanup_command "$tarball_path" "$tmp_dir")"
+}
+
 verify_help_output() {
   local entrypoint="${1:?entrypoint is required}"
   local help_output=""
@@ -204,12 +267,13 @@ main() {
   local tarball_path=""
   local entrypoint=""
 
-  install_exit_trap "$(cleanup_command "" "$tmp_dir")"
+  install_exit_trap "$(smoke_cleanup_command "$root_dir" "" "$tmp_dir")"
   set_npm_cache "${NPM_CACHE_DIR:-$(default_npm_cache)}"
+  track_repo_outputs "$root_dir" "$tmp_dir"
   prepare_pack_inputs "$root_dir"
   tarball_name="$(pack_repo "$root_dir" "$pack_log")"
   tarball_path="$(absolute_tarball_path "$root_dir" "$tarball_name")"
-  install_exit_trap "$(cleanup_command "$tarball_path" "$tmp_dir")"
+  install_exit_trap "$(smoke_cleanup_command "$root_dir" "$tarball_path" "$tmp_dir")"
   extract_tarball "$tarball_path" "$packed_dir"
   entrypoint="$(cli_path "$packed_dir")"
   verify_help_output "$entrypoint"

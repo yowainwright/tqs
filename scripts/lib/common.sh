@@ -40,6 +40,18 @@ ensure_parent_dir() {
   mkdir -p "$(dirname "$file_path")"
 }
 
+remove_dir_if_present() {
+  local dir_path="${1:-}"
+  cleanup_dir "$dir_path"
+}
+
+remove_dir_if_empty() {
+  local dir_path="${1:-}"
+  if [ -n "$dir_path" ] && [ -d "$dir_path" ] && [ -z "$(ls -A "$dir_path")" ]; then
+    rmdir "$dir_path"
+  fi
+}
+
 install_exit_trap() {
   local trap_command="${1:?trap_command is required}"
   trap "$trap_command" EXIT

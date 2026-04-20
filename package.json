@@ -9,6 +9,7 @@
   },
   "scripts": {
     "build": "npm run build:ts",
+    "clean:generated": "bash scripts/clean-generated.sh",
     "stage:quickjs": "bash scripts/stage-quickjs.sh",
     "build:quickjs": "npm run stage:quickjs && bash scripts/build-quickjs.sh",
     "build:ts": "tsup",
@@ -20,7 +21,8 @@
     "typecheck": "tsc --noEmit",
     "test": "bun test",
     "prepare": "npm run build:ts",
-    "prepack": "npm run stage:quickjs && npm run build:ts"
+    "prepack": "npm run stage:quickjs && npm run build:ts",
+    "postpack": "bash scripts/clean-generated.sh . quickjs"
   },
   "keywords": ["typescript", "cli", "scripts", "tools", "quickjs", "maybefetch"],
   "author": "Jeffry Wainwright",
