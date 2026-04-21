@@ -1,9 +1,10 @@
 import { afterEach, describe, expect, it } from 'bun:test';
 import fs from 'fs';
 import path from 'path';
-import { cleanupTempRoots, createTempRoot, runScript, writeFile } from './helpers.js';
+import { createTempTracker, runScript, writeFile } from './helpers.js';
 
 const SCRIPT_PATH = path.join(__dirname, '../../../scripts/clean-generated.sh');
+const tempTracker = createTempTracker();
 
 const runClean = (rootDir: string, target?: string): void => {
   const args = [SCRIPT_PATH, rootDir];
@@ -20,12 +21,12 @@ const assertPresent = (targetPath: string): void => {
 };
 
 afterEach(() => {
-  cleanupTempRoots();
+  tempTracker.cleanupTempRoots();
 });
 
 describe('clean-generated.sh', () => {
   it('removes all generated outputs with the default target', () => {
-    const rootDir = createTempRoot('tqs-clean-generated-');
+    const rootDir = tempTracker.createTempRoot('tqs-clean-generated-');
     const quickjsDir = path.join(rootDir, 'deps/quickjs-ng');
     const qjscPath = path.join(rootDir, 'bin/qjsc');
     const distFile = path.join(rootDir, 'dist/index.js');
@@ -44,7 +45,7 @@ describe('clean-generated.sh', () => {
   });
 
   it('removes only staged QuickJS sources for the quickjs target', () => {
-    const rootDir = createTempRoot('tqs-clean-generated-');
+    const rootDir = tempTracker.createTempRoot('tqs-clean-generated-');
     const quickjsDir = path.join(rootDir, 'deps/quickjs-ng');
     const qjscPath = path.join(rootDir, 'bin/qjsc');
     const distFile = path.join(rootDir, 'dist/index.js');
@@ -62,7 +63,7 @@ describe('clean-generated.sh', () => {
   });
 
   it('fails for an unknown target', () => {
-    const rootDir = createTempRoot('tqs-clean-generated-');
+    const rootDir = tempTracker.createTempRoot('tqs-clean-generated-');
 
     expect(() => runClean(rootDir, 'nope')).toThrow("Unknown clean target 'nope'");
   });

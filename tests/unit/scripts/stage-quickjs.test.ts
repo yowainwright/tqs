@@ -1,12 +1,13 @@
 import { afterEach, describe, expect, it } from 'bun:test';
 import fs from 'fs';
 import path from 'path';
-import { cleanupTempRoots, createTempRoot, initGitRepo, runScript, writeFile } from './helpers.js';
+import { createTempTracker, initGitRepo, runScript, writeFile } from './helpers.js';
 
 const SCRIPT_PATH = path.join(__dirname, '../../../scripts/stage-quickjs.sh');
+const tempTracker = createTempTracker();
 
 const createStageFixture = (fileList: string[]): { rootDir: string; commit: string } => {
-  const rootDir = createTempRoot('tqs-stage-');
+  const rootDir = tempTracker.createTempRoot('tqs-stage-');
   const repoDir = path.join(rootDir, 'quickjs-ng');
   const commit = initGitRepo(repoDir, {
     'quickjs.c': 'int quickjs = 1;\n',
@@ -20,7 +21,7 @@ const createStageFixture = (fileList: string[]): { rootDir: string; commit: stri
 };
 
 afterEach(() => {
-  cleanupTempRoots();
+  tempTracker.cleanupTempRoots();
 });
 
 describe('stage-quickjs.sh', () => {

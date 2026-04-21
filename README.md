@@ -202,6 +202,7 @@ Importing Node.js modules in `.tqs` files produces compile-time errors with sugg
 
 ```bash
 bun install
+bun run setup          # install git hooks into .git/hooks/
 bun run stage:quickjs    # stage the pinned QuickJS snapshot into deps/quickjs-ng/
 bun run build:ts        # Build TypeScript
 bun run lint             # Lint

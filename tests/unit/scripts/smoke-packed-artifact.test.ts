@@ -1,9 +1,10 @@
 import { afterEach, describe, expect, it } from 'bun:test';
 import fs from 'fs';
 import path from 'path';
-import { cleanupTempRoots, createTempRoot, runScript, writeExecutable } from './helpers.js';
+import { createTempTracker, runScript, writeExecutable } from './helpers.js';
 
 const SCRIPT_PATH = path.join(__dirname, '../../../scripts/smoke-packed-artifact.sh');
+const tempTracker = createTempTracker();
 
 const createSmokeFixture = (): {
   rootDir: string;
@@ -11,7 +12,7 @@ const createSmokeFixture = (): {
   fakeNodePath: string;
   fakeNpmCliPath: string;
 } => {
-  const rootDir = createTempRoot('tqs-smoke-script-');
+  const rootDir = tempTracker.createTempRoot('tqs-smoke-script-');
   const scriptsDir = path.join(rootDir, 'scripts');
   const fakeBinDir = path.join(rootDir, 'fake-bin');
   const fakeNodePath = path.join(fakeBinDir, 'node');
@@ -85,7 +86,7 @@ printf 'fake-package.tgz\\n'
 };
 
 afterEach(() => {
-  cleanupTempRoots();
+  tempTracker.cleanupTempRoots();
 });
 
 describe('smoke-packed-artifact.sh', () => {

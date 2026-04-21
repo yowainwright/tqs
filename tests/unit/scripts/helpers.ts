@@ -3,18 +3,24 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 
-const tempRoots: string[] = [];
+export const createTempTracker = (): {
+  createTempRoot: (prefix: string) => string;
+  cleanupTempRoots: () => void;
+} => {
+  const tempRoots: string[] = [];
 
-export const createTempRoot = (prefix: string): string => {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), prefix));
-  tempRoots.push(root);
-  return root;
-};
-
-export const cleanupTempRoots = (): void => {
-  for (const root of tempRoots.splice(0)) {
-    fs.rmSync(root, { recursive: true, force: true });
-  }
+  return {
+    createTempRoot(prefix: string): string {
+      const root = fs.mkdtempSync(path.join(os.tmpdir(), prefix));
+      tempRoots.push(root);
+      return root;
+    },
+    cleanupTempRoots(): void {
+      for (const root of tempRoots.splice(0)) {
+        fs.rmSync(root, { recursive: true, force: true });
+      }
+    },
+  };
 };
 
 export const writeFile = (filePath: string, contents = 'test'): void => {
@@ -50,15 +56,21 @@ export const runScript = (
 
 export const initGitRepo = (repoDir: string, files: Record<string, string>): string => {
   fs.mkdirSync(repoDir, { recursive: true });
-  runBash('git init -q', { cwd: repoDir });
-  runBash('git config user.email "tests@example.com"', { cwd: repoDir });
-  runBash('git config user.name "Test Runner"', { cwd: repoDir });
+
+  // Strip git env vars so a parent git hook's GIT_DIR doesn't bleed into this
+  // isolated repo and contaminate the main repo's index.
+  const env = Object.fromEntries(Object.entries(process.env).filter(([k]) => !k.startsWith('GIT_')));
+  const opts = { cwd: repoDir, env };
+
+  runBash('git init -q', opts);
+  runBash('git config user.email "tests@example.com"', opts);
+  runBash('git config user.name "Test Runner"', opts);
 
   for (const [relativePath, contents] of Object.entries(files)) {
     writeFile(path.join(repoDir, relativePath), contents);
   }
 
-  runBash('git add .', { cwd: repoDir });
-  runBash('git commit -q -m "test commit"', { cwd: repoDir });
-  return runBash('git rev-parse HEAD', { cwd: repoDir }).trim();
+  runBash('git add .', opts);
+  runBash('git commit -q -m "test commit"', opts);
+  return runBash('git rev-parse HEAD', opts).trim();
 };

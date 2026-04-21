@@ -1,14 +1,15 @@
 import { afterEach, describe, expect, it } from 'bun:test';
 import fs from 'fs';
 import path from 'path';
-import { cleanupTempRoots, createTempRoot, runBash, writeFile } from './helpers.js';
+import { createTempTracker, runBash, writeFile } from './helpers.js';
 
 const COMMON_PATH = path.join(__dirname, '../../../scripts/lib/common.sh');
 const STAGE_SCRIPT_PATH = path.join(__dirname, '../../../scripts/stage-quickjs.sh');
 const REPO_ROOT = path.join(__dirname, '../../..');
+const tempTracker = createTempTracker();
 
 afterEach(() => {
-  cleanupTempRoots();
+  tempTracker.cleanupTempRoots();
 });
 
 describe('common.sh', () => {
@@ -39,7 +40,7 @@ describe('common.sh', () => {
   });
 
   it('removes empty directories but preserves non-empty ones', () => {
-    const rootDir = createTempRoot('tqs-common-');
+    const rootDir = tempTracker.createTempRoot('tqs-common-');
     const emptyDir = path.join(rootDir, 'empty');
     const fullDir = path.join(rootDir, 'full');
 

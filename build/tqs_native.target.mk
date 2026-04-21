@@ -11,6 +11,8 @@ DEFS_Debug := \
 	'-D_FILE_OFFSET_BITS=64' \
 	'-D_DARWIN_USE_64_BIT_INODE=1' \
 	'-D_LARGEFILE_SOURCE' \
+	'-DOPENSSL_NO_PINSHARED' \
+	'-DOPENSSL_THREADS' \
 	'-DNAPI_DISABLE_CPP_EXCEPTIONS' \
 	'-DBUILDING_NODE_EXTENSION' \
 	'-DDEBUG' \
@@ -45,15 +47,15 @@ CFLAGS_OBJC_Debug :=
 CFLAGS_OBJCC_Debug :=
 
 INCS_Debug := \
-	-I/Users/jeffrywainwright/Library/Caches/node-gyp/25.4.0/include/node \
-	-I/Users/jeffrywainwright/Library/Caches/node-gyp/25.4.0/src \
-	-I/Users/jeffrywainwright/Library/Caches/node-gyp/25.4.0/deps/openssl/config \
-	-I/Users/jeffrywainwright/Library/Caches/node-gyp/25.4.0/deps/openssl/openssl/include \
-	-I/Users/jeffrywainwright/Library/Caches/node-gyp/25.4.0/deps/uv/include \
-	-I/Users/jeffrywainwright/Library/Caches/node-gyp/25.4.0/deps/zlib \
-	-I/Users/jeffrywainwright/Library/Caches/node-gyp/25.4.0/deps/v8/include \
+	-I/Users/jeff/Library/Caches/node-gyp/25.8.1/include/node \
+	-I/Users/jeff/Library/Caches/node-gyp/25.8.1/src \
+	-I/Users/jeff/Library/Caches/node-gyp/25.8.1/deps/openssl/config \
+	-I/Users/jeff/Library/Caches/node-gyp/25.8.1/deps/openssl/openssl/include \
+	-I/Users/jeff/Library/Caches/node-gyp/25.8.1/deps/uv/include \
+	-I/Users/jeff/Library/Caches/node-gyp/25.8.1/deps/zlib \
+	-I/Users/jeff/Library/Caches/node-gyp/25.8.1/deps/v8/include \
 	-I$(srcdir)/native/include \
-	-I/Users/jeffrywainwright/code/oss/tqs/node_modules/node-addon-api
+	-I/Users/jeff/code/oss/tqs/node_modules/node-addon-api
 
 DEFS_Release := \
 	'-DNODE_GYP_MODULE_NAME=tqs_native' \
@@ -64,6 +66,8 @@ DEFS_Release := \
 	'-D_FILE_OFFSET_BITS=64' \
 	'-D_DARWIN_USE_64_BIT_INODE=1' \
 	'-D_LARGEFILE_SOURCE' \
+	'-DOPENSSL_NO_PINSHARED' \
+	'-DOPENSSL_THREADS' \
 	'-DNAPI_DISABLE_CPP_EXCEPTIONS' \
 	'-DBUILDING_NODE_EXTENSION'
 
@@ -96,15 +100,15 @@ CFLAGS_OBJC_Release :=
 CFLAGS_OBJCC_Release :=
 
 INCS_Release := \
-	-I/Users/jeffrywainwright/Library/Caches/node-gyp/25.4.0/include/node \
-	-I/Users/jeffrywainwright/Library/Caches/node-gyp/25.4.0/src \
-	-I/Users/jeffrywainwright/Library/Caches/node-gyp/25.4.0/deps/openssl/config \
-	-I/Users/jeffrywainwright/Library/Caches/node-gyp/25.4.0/deps/openssl/openssl/include \
-	-I/Users/jeffrywainwright/Library/Caches/node-gyp/25.4.0/deps/uv/include \
-	-I/Users/jeffrywainwright/Library/Caches/node-gyp/25.4.0/deps/zlib \
-	-I/Users/jeffrywainwright/Library/Caches/node-gyp/25.4.0/deps/v8/include \
+	-I/Users/jeff/Library/Caches/node-gyp/25.8.1/include/node \
+	-I/Users/jeff/Library/Caches/node-gyp/25.8.1/src \
+	-I/Users/jeff/Library/Caches/node-gyp/25.8.1/deps/openssl/config \
+	-I/Users/jeff/Library/Caches/node-gyp/25.8.1/deps/openssl/openssl/include \
+	-I/Users/jeff/Library/Caches/node-gyp/25.8.1/deps/uv/include \
+	-I/Users/jeff/Library/Caches/node-gyp/25.8.1/deps/zlib \
+	-I/Users/jeff/Library/Caches/node-gyp/25.8.1/deps/v8/include \
 	-I$(srcdir)/native/include \
-	-I/Users/jeffrywainwright/code/oss/tqs/node_modules/node-addon-api
+	-I/Users/jeff/code/oss/tqs/node_modules/node-addon-api
 
 OBJS := \
 	$(obj).target/$(TARGET)/native/src/binding.o \
@@ -123,25 +127,25 @@ $(OBJS): GYP_OBJCXXFLAGS := $(DEFS_$(BUILDTYPE)) $(INCS_$(BUILDTYPE))  $(CFLAGS_
 
 # Suffix rules, putting all outputs into $(obj).
 
-$(obj).$(TOOLSET)/$(TARGET)/%.o: $(srcdir)/%.c FORCE_DO_CMD
-	@$(call do_cmd,cc,1)
-
 $(obj).$(TOOLSET)/$(TARGET)/%.o: $(srcdir)/%.cc FORCE_DO_CMD
 	@$(call do_cmd,cxx,1)
 
-# Try building from generated source, too.
-
-$(obj).$(TOOLSET)/$(TARGET)/%.o: $(obj).$(TOOLSET)/%.c FORCE_DO_CMD
+$(obj).$(TOOLSET)/$(TARGET)/%.o: $(srcdir)/%.c FORCE_DO_CMD
 	@$(call do_cmd,cc,1)
+
+# Try building from generated source, too.
 
 $(obj).$(TOOLSET)/$(TARGET)/%.o: $(obj).$(TOOLSET)/%.cc FORCE_DO_CMD
 	@$(call do_cmd,cxx,1)
 
-$(obj).$(TOOLSET)/$(TARGET)/%.o: $(obj)/%.c FORCE_DO_CMD
+$(obj).$(TOOLSET)/$(TARGET)/%.o: $(obj).$(TOOLSET)/%.c FORCE_DO_CMD
 	@$(call do_cmd,cc,1)
 
 $(obj).$(TOOLSET)/$(TARGET)/%.o: $(obj)/%.cc FORCE_DO_CMD
 	@$(call do_cmd,cxx,1)
+
+$(obj).$(TOOLSET)/$(TARGET)/%.o: $(obj)/%.c FORCE_DO_CMD
+	@$(call do_cmd,cc,1)
 
 # End of this set of suffix rules
 ### Rules for final target.

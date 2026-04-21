@@ -1,9 +1,10 @@
 import { afterEach, describe, expect, it } from 'bun:test';
 import fs from 'fs';
 import path from 'path';
-import { cleanupTempRoots, createTempRoot, runScript, writeExecutable, writeFile } from './helpers.js';
+import { createTempTracker, runScript, writeExecutable, writeFile } from './helpers.js';
 
 const SCRIPT_PATH = path.join(__dirname, '../../../scripts/build-quickjs.sh');
+const tempTracker = createTempTracker();
 
 const createBuildFixture = (): {
   rootDir: string;
@@ -12,7 +13,7 @@ const createBuildFixture = (): {
   ccLogPath: string;
   fakeCcPath: string;
 } => {
-  const rootDir = createTempRoot('tqs-build-');
+  const rootDir = tempTracker.createTempRoot('tqs-build-');
   const depsDir = path.join(rootDir, 'deps/quickjs-ng');
   const outputPath = path.join(rootDir, 'bin/qjsc');
   const ccLogPath = path.join(rootDir, 'fake-cc.log');
@@ -44,7 +45,7 @@ touch "$output_path"
 };
 
 afterEach(() => {
-  cleanupTempRoots();
+  tempTracker.cleanupTempRoots();
 });
 
 describe('build-quickjs.sh', () => {
@@ -67,7 +68,7 @@ describe('build-quickjs.sh', () => {
   });
 
   it('fails when staged sources are missing', () => {
-    const rootDir = createTempRoot('tqs-build-');
+    const rootDir = tempTracker.createTempRoot('tqs-build-');
 
     expect(() => runScript(SCRIPT_PATH, [rootDir])).toThrow('Staged QuickJS sources not found');
   });
