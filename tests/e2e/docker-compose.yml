@@ -8,15 +8,13 @@ services:
     volumes:
       - ./test-scripts:/test-scripts:ro
     working_dir: /test-scripts
-    command: /app/bin/tqs --help
     networks:
       - test-network
+    depends_on:
+      - httpbin
 
-  # HTTP test service for testing maybefetch
   httpbin:
     image: kennethreitz/httpbin
-    ports:
-      - "8080:80"
     networks:
       - test-network
 

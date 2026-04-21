@@ -1,20 +1,22 @@
-import { CLI_NAME, CLI_DESCRIPTION } from '../constants.js';
-import { logger } from '../logger.js';
+import { CLI_NAME, CLI_DESCRIPTION } from "../constants.js";
+import { logger, pad, color } from "../logger.js";
+
+const COLUMN_WIDTH = 22;
 
 export const showHelp = (): void => {
-  logger.info(`${CLI_NAME} - ${CLI_DESCRIPTION}`);
-  logger.info('');
-  logger.info('Usage:');
-  logger.info(`  ${CLI_NAME} <script>                 Build and run a QuickJS script`);
-  logger.info(`  ${CLI_NAME} <script> -o <output>     Build a standalone executable`);
-  logger.info(`  ${CLI_NAME} --help                   Show this help`);
-  logger.info(`  ${CLI_NAME} --version                Show version`);
-  logger.info('');
-  logger.info('Examples:');
-  logger.info(`  ${CLI_NAME} my-script.tqs`);
-  logger.info(`  ${CLI_NAME} my-script.tqs -o my-script`);
-  logger.info('');
-  logger.info('The script will have access to:');
-  logger.info('  - QuickJS standard library');
-  logger.info('  - maybefetch(url, maxRetries, initialDelayMs, maxDelayMs, backoffFactor, timeoutMs)');
+  logger.info(`${color.bold(CLI_NAME)}  ${color.dim(CLI_DESCRIPTION)}`);
+  logger.info("");
+  logger.info(color.cyan("Usage"));
+  logger.info(
+    `  ${pad(`${CLI_NAME} <script>`, COLUMN_WIDTH)}Compile TypeScript to a native binary`,
+  );
+  logger.info(`  ${pad(`${CLI_NAME} --help`, COLUMN_WIDTH)}Show this help`);
+  logger.info(`  ${pad(`${CLI_NAME} --version`, COLUMN_WIDTH)}Show version`);
+  logger.info("");
+  logger.info(color.cyan("Examples"));
+  logger.info(`  ${CLI_NAME} my-script.ts`);
+  logger.info("");
+  logger.info(color.cyan("Available in scripts"));
+  logger.info(`  ${color.dim("QuickJS standard library (std, os)")}`);
+  logger.info(`  ${color.dim("maybeFetch(url, config?)")}`);
 };

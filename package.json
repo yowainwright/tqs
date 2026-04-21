@@ -1,52 +1,58 @@
 {
   "name": "tqs",
-  "version": "1.0.0",
-  "description": "quick scripts for typescript",
+  "version": "0.0.5",
+  "description": "Compile TypeScript to fast, small standalone native binaries via QuickJS",
   "type": "module",
   "main": "./dist/index.js",
   "bin": {
     "tqs": "./dist/cli/index.js"
   },
   "scripts": {
-    "release": "release-it",
-    "build": "npm run build:ts",
+    "build": "bun run build:quickjs && bun run build:ts",
+    "build:quickjs": "bash scripts/build-binary.sh",
+    "build:ts": "bash scripts/build-ts.sh",
     "clean:generated": "bash scripts/clean-generated.sh",
-    "setup": "bash scripts/setup.sh",
+    "setup": "bash scripts/install-hooks.sh",
     "stage:quickjs": "bash scripts/stage-quickjs.sh",
-    "build:quickjs": "npm run stage:quickjs && bash scripts/build-quickjs.sh",
-    "build:ts": "tsup",
-    "dev": "tsup --watch",
-    "start": "node ./dist/cli.js",
+    "start": "bun ./dist/cli/index.js",
+    "format": "oxfmt src",
+    "format:fix": "oxfmt --write src",
     "lint": "oxlint src",
     "lint:fix": "oxlint --fix src",
     "smoke:pack": "bash scripts/smoke-packed-artifact.sh",
     "typecheck": "tsc --noEmit",
     "test": "bun test",
-    "prepare": "npm run build:ts",
-    "prepack": "npm run stage:quickjs && npm run build:ts",
-    "postpack": "bash scripts/clean-generated.sh . quickjs"
+    "install-hooks": "bash scripts/install-hooks.sh",
+    "prepare": "bash scripts/install-hooks.sh && bun run build:ts",
+    "prepack": "bun run stage:quickjs && bun run build:ts",
+    "postpack": "bash scripts/clean-generated.sh . quickjs",
+    "release": "release-it"
   },
-  "keywords": ["typescript", "cli", "scripts", "tools", "quickjs", "maybefetch"],
+  "keywords": [
+    "typescript",
+    "cli",
+    "scripts",
+    "tools",
+    "quickjs",
+    "maybefetch"
+  ],
   "author": "Jeffry Wainwright",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/jeffrywainwright/tqs.git"
+    "url": "https://github.com/yowainwright/tqs.git"
   },
   "bugs": {
-    "url": "https://github.com/jeffrywainwright/tqs/issues"
+    "url": "https://github.com/yowainwright/tqs/issues"
   },
-  "homepage": "https://github.com/jeffrywainwright/tqs#readme",
+  "homepage": "https://github.com/yowainwright/tqs#readme",
   "devDependencies": {
     "@release-it/conventional-changelog": "^10.0.6",
     "@socketsecurity/bun-security-scanner": "^1.1.2",
-    "@types/node": "^24.0.0",
-    "node-addon-api": "^8.0.0",
-    "node-gyp": "^10.0.0",
-    "oxlint": "^0.9.0",
+    "oxfmt": "^0.45.0",
+    "oxlint": "^1.60.0",
     "release-it": "^20.0.0",
-    "tsup": "^8.0.0",
-    "typescript": "^5.3.0"
+    "typescript": "^6.0.2"
   },
   "dependencies": {},
   "peerDependencies": {},
@@ -63,7 +69,6 @@
     "./types": "./src/types.ts"
   },
   "engines": {
-    "node": ">=24.0.0",
     "bun": ">=1.0.0"
   },
   "release-it": {
@@ -76,6 +81,7 @@
     "git": {
       "commitMessage": "chore: release v${version}",
       "tagName": "v${version}",
+      "tagAnnotation": "Release v${version}",
       "requireBranch": "main",
       "requireCleanWorkingDir": true
     },
@@ -85,6 +91,13 @@
     },
     "npm": {
       "publish": true
+    },
+    "hooks": {
+      "before:init": [
+        "bun run lint",
+        "bun run build:ts",
+        "bun run test"
+      ]
     }
   }
 }

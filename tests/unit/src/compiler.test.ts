@@ -1,57 +1,25 @@
-import { describe, it, expect, afterEach } from 'bun:test';
-import { compileAndRun } from '../../../src/compiler.js';
-import fs from 'fs';
-import path from 'path';
+import { describe, it, expect } from 'bun:test';
+import { isTqsScript } from '../../../src/marker.js';
 
-const FIXTURES_DIR = path.join(__dirname, '../../fixtures');
-const TEMP_DIR = 'test-files';
-
-describe('compiler', () => {
-  afterEach(() => {
-    if (fs.existsSync(TEMP_DIR)) {
-      fs.rmSync(TEMP_DIR, { recursive: true, force: true });
-    }
+describe('isTqsScript', () => {
+  it('should return true for file with @tqs-script marker', () => {
+    expect(isTqsScript('// @tqs-script\nimport * as std from "qjs:std";')).toBe(true);
   });
 
-  it('should throw for non-existent file', () => {
-    expect(() => compileAndRun('non-existent.ts')).toThrow("File 'non-existent.ts' not found");
+  it('should return false for file without marker', () => {
+    expect(isTqsScript('console.log("hello")')).toBe(false);
   });
 
-  it('should throw for unmarked file', () => {
-    const unmarked = path.join(FIXTURES_DIR, 'unmarked.ts');
-    expect(() => compileAndRun(unmarked)).toThrow('not marked for QuickJS execution');
+  it('should detect marker after leading comment lines', () => {
+    expect(isTqsScript('// some comment\n// @tqs-script\nconst x = 1;')).toBe(true);
   });
 
-  it('should accept .tqs extension', () => {
-    const fixture = path.join(FIXTURES_DIR, 'tqs-extension.tqs');
-    try {
-      compileAndRun(fixture);
-    } catch (err) {
-      const message = (err as Error).message;
-      if (message.includes('not marked for QuickJS execution')) throw err;
-    }
+  it('should not detect marker beyond first 500 chars', () => {
+    const padding = 'x'.repeat(501);
+    expect(isTqsScript(`${padding}// @tqs-script`)).toBe(false);
   });
 
-  it('should accept @tqs-script comment', () => {
-    const fixture = path.join(FIXTURES_DIR, 'tqs-comment.ts');
-    try {
-      compileAndRun(fixture);
-    } catch (err) {
-      const message = (err as Error).message;
-      if (message.includes('not marked for QuickJS execution')) throw err;
-    }
-  });
-
-  it('should accept file in scripts directory', () => {
-    fs.mkdirSync(path.join(TEMP_DIR, 'scripts'), { recursive: true });
-    const dirFixture = path.join(TEMP_DIR, 'scripts', 'detect-by-dir.ts');
-    fs.writeFileSync(dirFixture, 'console.log("detect by dir");');
-
-    try {
-      compileAndRun(dirFixture);
-    } catch (err) {
-      const message = (err as Error).message;
-      if (message.includes('not marked for QuickJS execution')) throw err;
-    }
+  it('should return false for empty content', () => {
+    expect(isTqsScript('')).toBe(false);
   });
 });

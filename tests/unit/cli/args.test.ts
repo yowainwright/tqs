@@ -29,7 +29,6 @@ describe('parseArgs', () => {
   it('should parse script file as first non-flag arg', () => {
     const result = parseArgs(['my-script.ts']);
     expect(result.scriptFile).toBe('my-script.ts');
-    expect(result.outputFile).toBeUndefined();
     expect(result.help).toBe(false);
     expect(result.version).toBe(false);
   });
@@ -41,27 +40,10 @@ describe('parseArgs', () => {
     expect(result.version).toBe(true);
   });
 
-  it('should parse -o output path', () => {
-    const result = parseArgs(['script.tqs', '-o', 'dist/script']);
-    expect(result.scriptFile).toBe('script.tqs');
-    expect(result.outputFile).toBe('dist/script');
-  });
-
-  it('should parse --output path', () => {
-    const result = parseArgs(['script.tqs', '--output', 'dist/script']);
-    expect(result.scriptFile).toBe('script.tqs');
-    expect(result.outputFile).toBe('dist/script');
-  });
-
-  it('should throw when output flag is missing a value', () => {
-    expect(() => parseArgs(['script.tqs', '-o'])).toThrow('Missing value for -o');
-  });
-
   it('should return defaults for empty args', () => {
     const result = parseArgs([]);
     expect(result.help).toBe(false);
     expect(result.version).toBe(false);
     expect(result.scriptFile).toBeUndefined();
-    expect(result.outputFile).toBeUndefined();
   });
 });
