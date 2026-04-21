@@ -1,4 +1,3 @@
-import * as std from "qjs:std";
 import type { Logger } from "./types.js";
 import {
   RESET,
@@ -12,7 +11,7 @@ import {
   CHAR_STEP,
 } from "./constants.js";
 
-const colorEnabled = std.getenv("NO_COLOR") === null;
+const colorEnabled = process.env.NO_COLOR === undefined;
 
 const c = (code: string, text: string): string => (colorEnabled ? `${code}${text}${RESET}` : text);
 
@@ -31,16 +30,16 @@ export const color = {
 
 const createLogger = (): Logger => ({
   info: (message: string): void => {
-    std.out.puts(`${message}\n`);
+    process.stdout.write(`${message}\n`);
   },
   error: (message: string): void => {
-    std.err.puts(`${c(RED, CHAR_ERROR)} ${message}\n`);
+    process.stderr.write(`${c(RED, CHAR_ERROR)} ${message}\n`);
   },
   success: (message: string): void => {
-    std.out.puts(`${c(GREEN, CHAR_SUCCESS)} ${message}\n`);
+    process.stdout.write(`${c(GREEN, CHAR_SUCCESS)} ${message}\n`);
   },
   step: (message: string): void => {
-    std.out.puts(`${c(DIM, CHAR_STEP)} ${message}\n`);
+    process.stdout.write(`${c(DIM, CHAR_STEP)} ${message}\n`);
   },
 });
 

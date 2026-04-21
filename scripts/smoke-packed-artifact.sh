@@ -45,9 +45,9 @@ stage_script_path() {
   printf '%s\n' "$root_dir/scripts/stage-quickjs.sh"
 }
 
-tsup_path() {
+build_ts_script_path() {
   local root_dir="${1:?root_dir is required}"
-  printf '%s\n' "$root_dir/node_modules/.bin/tsup"
+  printf '%s\n' "$root_dir/scripts/build-ts.sh"
 }
 
 stage_quickjs_sources() {
@@ -59,7 +59,7 @@ build_typescript_bundle() {
   local root_dir="${1:?root_dir is required}"
   (
     cd "$root_dir"
-    "$(tsup_path "$root_dir")"
+    bash "$(build_ts_script_path "$root_dir")"
   )
 }
 
@@ -146,7 +146,8 @@ assert_contains() {
 write_smoke_script() {
   local script_path="${1:?script_path is required}"
   cat > "$script_path" <<'EOF'
-import * as std from "std";
+// @tqs-script
+import * as std from "qjs:std";
 
 std.printf("packed artifact works\n");
 EOF
@@ -155,8 +156,7 @@ EOF
 build_smoke_binary() {
   local entrypoint="${1:?entrypoint is required}"
   local script_path="${2:?script_path is required}"
-  local output_path="${3:?output_path is required}"
-  node "$entrypoint" "$script_path" -o "$output_path"
+  node "$entrypoint" "$script_path"
 }
 
 run_smoke_binary() {
@@ -238,7 +238,7 @@ verify_help_output() {
   local help_output=""
 
   help_output="$(run_help "$entrypoint")"
-  assert_contains "$help_output" "Usage:" "$(help_message)"
+  assert_contains "$help_output" "Usage" "$(help_message)"
 }
 
 verify_smoke_binary() {
@@ -247,7 +247,7 @@ verify_smoke_binary() {
   local output_path="${3:?output_path is required}"
   local run_output=""
 
-  build_smoke_binary "$entrypoint" "$script_path" "$output_path"
+  build_smoke_binary "$entrypoint" "$script_path"
   run_output="$(run_smoke_binary "$output_path")"
   assert_contains "$run_output" "packed artifact works" "$(smoke_binary_message)"
 }
@@ -260,8 +260,8 @@ main() {
   local root_dir="${1:-${ROOT_DIR:-$(repo_root "${BASH_SOURCE[0]}")}}"
   local tmp_dir="${TMP_DIR:-$(make_temp_dir quickjs-smoke.XXXXXX)}"
   local packed_dir="$(path_in_dir "$tmp_dir" package)"
-  local script_path="$(path_in_dir "$tmp_dir" script.tqs)"
-  local output_path="$(path_in_dir "$tmp_dir" out)"
+  local script_path="$(path_in_dir "$tmp_dir" script.ts)"
+  local output_path="${script_path%.ts}"
   local pack_log="$(path_in_dir "$tmp_dir" npm-pack.log)"
   local tarball_name=""
   local tarball_path=""

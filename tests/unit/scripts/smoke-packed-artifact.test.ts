@@ -30,12 +30,14 @@ printf 'stage\\n' > "$root_dir/.stage-ran"
   );
 
   writeExecutable(
-    path.join(rootDir, 'node_modules/.bin/tsup'),
+    path.join(scriptsDir, 'build-ts.sh'),
     `#!/bin/bash
 set -euo pipefail
+root_dir="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$root_dir"
 mkdir -p dist
 printf 'dist\\n' > dist/index.js
-printf 'tsup\\n' > .tsup-ran
+printf 'build-ts\\n' > .build-ts-ran
 `
   );
 
@@ -68,7 +70,8 @@ if [ "\${1:-}" = "--help" ]; then
   printf 'Usage:\\n'
   exit 0
 fi
-output_path="\${3:?}"
+script_path="\${1:?}"
+output_path="\${script_path%.*}"
 cat > "$output_path" <<'OUT'
 #!/bin/bash
 printf 'packed artifact works\\n'
@@ -104,7 +107,7 @@ describe('smoke-packed-artifact.sh', () => {
 
     expect(output).toContain('Packed artifact smoke test passed.');
     expect(fs.readFileSync(path.join(rootDir, '.stage-ran'), 'utf8')).toContain('stage');
-    expect(fs.readFileSync(path.join(rootDir, '.tsup-ran'), 'utf8')).toContain('tsup');
+    expect(fs.readFileSync(path.join(rootDir, '.build-ts-ran'), 'utf8')).toContain('build-ts');
     expect(fs.existsSync(path.join(rootDir, 'dist'))).toBe(false);
     expect(fs.existsSync(path.join(rootDir, 'deps/quickjs-ng'))).toBe(false);
     expect(fs.existsSync(path.join(rootDir, 'fake-package.tgz'))).toBe(false);

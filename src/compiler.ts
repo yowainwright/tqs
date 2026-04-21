@@ -1,5 +1,5 @@
-import * as os from "qjs:os";
-import * as std from "qjs:std";
+import { spawnSync } from "node:child_process";
+import { readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import { EXIT_FAILURE } from "./constants.js";
 import { logger } from "./logger.js";
 import { isTqsScript } from "./marker.js";
@@ -8,20 +8,57 @@ const stripExtension = (filePath: string): string => filePath.replace(/\.(ts|tqs
 
 const toJsPath = (filePath: string): string => filePath.replace(/\.(ts|tqs)$/, ".js");
 
-const exec = (args: string[]): number => os.exec(args, { block: true });
+const exec = (args: string[]): number => {
+  const [command, ...commandArgs] = args;
+  if (!command) {
+    return EXIT_FAILURE;
+  }
+  const result = spawnSync(command, commandArgs, { stdio: "inherit" });
+  if (result.error) {
+    return EXIT_FAILURE;
+  }
+  return result.status ?? EXIT_FAILURE;
+};
 
 const hasTqsMarker = (filePath: string): boolean => {
-  const file = std.loadFile(filePath);
-  return file ? isTqsScript(file) : false;
+  try {
+    return isTqsScript(readFileSync(filePath, "utf8"));
+  } catch {
+    return false;
+  }
+};
+
+const normalizeQuickJsImports = (filePath: string): void => {
+  const contents = readFileSync(filePath, "utf8")
+    .replace(/(["'])qjs:std\1/g, '"std"')
+    .replace(/(["'])qjs:os\1/g, '"os"');
+  writeFileSync(filePath, contents);
 };
 
 const buildJs = (inputFile: string): string => {
   const outFile = toJsPath(inputFile);
-  const result = exec(["bun", "build", "--target", "browser", "--outfile", outFile, inputFile]);
+  const result = exec([
+    "bun",
+    "build",
+    "--target",
+    "browser",
+    "--external",
+    "std",
+    "--external",
+    "os",
+    "--external",
+    "qjs:std",
+    "--external",
+    "qjs:os",
+    "--outfile",
+    outFile,
+    inputFile,
+  ]);
   if (result !== 0) {
     logger.error(`build failed: ${inputFile}`);
-    std.exit(EXIT_FAILURE);
+    process.exit(EXIT_FAILURE);
   }
+  normalizeQuickJsImports(outFile);
   return outFile;
 };
 
@@ -29,7 +66,7 @@ const buildBinary = (jsFile: string, outputFile: string): void => {
   const result = exec(["qjsc", "-o", outputFile, jsFile]);
   if (result !== 0) {
     logger.error(`qjsc failed: ${jsFile}`);
-    std.exit(EXIT_FAILURE);
+    process.exit(EXIT_FAILURE);
   }
 };
 
@@ -42,7 +79,7 @@ export const compile = (inputFile: string): void => {
     logger.error(
       `${inputFile} is missing // @tqs-script — add it to mark this file as a tqs script`,
     );
-    std.exit(EXIT_FAILURE);
+    process.exit(EXIT_FAILURE);
   }
 
   logger.step(`Compiling: ${inputFile} -> ${outputFile}`);
@@ -50,7 +87,7 @@ export const compile = (inputFile: string): void => {
   const jsFile = isTypeScript ? buildJs(inputFile) : inputFile;
   buildBinary(jsFile, outputFile);
 
-  if (isTypeScript) os.unlink(jsFile);
+  if (isTypeScript) unlinkSync(jsFile);
 
   logger.success(`Built: ${outputFile}`);
 };
