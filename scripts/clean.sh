@@ -1,8 +1,8 @@
 #!/bin/bash
 set -euo pipefail
 
-# shellcheck source=./lib/common.sh
-source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib/common.sh"
+# shellcheck source=./common.sh
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/common.sh"
 
 default_deps_root() {
   local root_dir="${1:-$(repo_root "${BASH_SOURCE[0]}")}"

@@ -12,6 +12,15 @@ const CLI_PATH = path.join(import.meta.dir, '../../dist/cli/index.js');
 const hasCli = existsSync(CLI_PATH);
 const TEMP_DIR = path.join(tmpdir(), `tqs-test-${process.pid}`);
 
+const hasQjsc = (() => {
+  try {
+    execSync('which qjsc', { stdio: 'ignore' });
+    return true;
+  } catch {
+    return false;
+  }
+})();
+
 const run = (args: string): string =>
   execSync(`bun ${CLI_PATH} ${args}`, { encoding: 'utf8', stdio: 'pipe' });
 
@@ -48,12 +57,12 @@ describe.skipIf(!hasCli)('CLI Integration', () => {
     expect(() => run(fixture)).toThrow();
   });
 
-  it('should accept .ts file with @tqs-script marker', () => {
+  it.skipIf(!hasQjsc)('should accept .ts file with @tqs-script marker', () => {
     const fixture = path.join(import.meta.dir, '../fixtures/tqs-comment.ts');
     expect(() => run(fixture)).not.toThrow();
   });
 
-  it('should build a standalone executable with -o', () => {
+  it.skipIf(!hasQjsc)('should build a standalone executable with -o', () => {
     mkdirSync(TEMP_DIR, { recursive: true });
     const scriptPath = path.join(TEMP_DIR, 'build-me.tqs');
     const outputPath = path.join(TEMP_DIR, 'build-me');

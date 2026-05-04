@@ -56,3 +56,43 @@ install_exit_trap() {
   local trap_command="${1:?trap_command is required}"
   trap "$trap_command" EXIT
 }
+
+_pass=0
+_fail=0
+
+ok()   { printf 'ok  %s\n' "$1"; _pass=$((_pass+1)); }
+fail() { printf 'FAIL %s\n' "$1"; _fail=$((_fail+1)); }
+
+assert_eq() {
+  local got="$1" want="$2" label="$3"
+  if [ "$got" = "$want" ]; then ok "$label"
+  else printf 'FAIL %s\n  got:  %s\n  want: %s\n' "$label" "$got" "$want"; _fail=$((_fail+1)); fi
+}
+
+assert_contains() {
+  local haystack="$1" needle="$2" label="$3"
+  if printf '%s' "$haystack" | grep -qF "$needle"; then ok "$label"
+  else printf 'FAIL %s — missing: %s\n' "$label" "$needle"; _fail=$((_fail+1)); fi
+}
+
+assert_exists() {
+  local path="$1" label="$2"
+  if [ -e "$path" ]; then ok "$label"
+  else printf 'FAIL %s — missing: %s\n' "$label" "$path"; _fail=$((_fail+1)); fi
+}
+
+assert_missing() {
+  local path="$1" label="$2"
+  if [ ! -e "$path" ]; then ok "$label"
+  else printf 'FAIL %s — exists: %s\n' "$label" "$path"; _fail=$((_fail+1)); fi
+}
+
+assert_fails() {
+  if ! "$@" 2>/dev/null; then ok "fails: $*"
+  else printf 'FAIL expected failure: %s\n' "$*"; _fail=$((_fail+1)); fi
+}
+
+done_testing() {
+  printf '\n%d passed, %d failed\n' "$_pass" "$_fail"
+  [ "$_fail" -eq 0 ]
+}
