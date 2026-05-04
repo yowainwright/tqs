@@ -37,11 +37,15 @@ const normalizeQuickJsImports = (filePath: string): void => {
 
 const buildJs = (inputFile: string): string => {
   const outFile = toJsPath(inputFile);
+  const lastSlash = outFile.lastIndexOf("/");
+  const outDir = lastSlash >= 0 ? outFile.slice(0, lastSlash) : ".";
   const result = exec([
     "bun",
     "build",
     "--target",
     "browser",
+    "--loader",
+    ".tqs:ts",
     "--external",
     "std",
     "--external",
@@ -50,8 +54,8 @@ const buildJs = (inputFile: string): string => {
     "qjs:std",
     "--external",
     "qjs:os",
-    "--outfile",
-    outFile,
+    "--outdir",
+    outDir,
     inputFile,
   ]);
   if (result !== 0) {
@@ -70,8 +74,8 @@ const buildBinary = (jsFile: string, outputFile: string): void => {
   }
 };
 
-export const compile = (inputFile: string): void => {
-  const outputFile = stripExtension(inputFile);
+export const compile = (inputFile: string, outputFile?: string): void => {
+  const resolvedOutput = outputFile ?? stripExtension(inputFile);
   const isTsOnly = inputFile.endsWith(".ts");
   const isTypeScript = /\.(ts|tqs)$/.test(inputFile);
 
@@ -82,12 +86,12 @@ export const compile = (inputFile: string): void => {
     process.exit(EXIT_FAILURE);
   }
 
-  logger.step(`Compiling: ${inputFile} -> ${outputFile}`);
+  logger.step(`Compiling: ${inputFile} -> ${resolvedOutput}`);
 
   const jsFile = isTypeScript ? buildJs(inputFile) : inputFile;
-  buildBinary(jsFile, outputFile);
+  buildBinary(jsFile, resolvedOutput);
 
   if (isTypeScript) unlinkSync(jsFile);
 
-  logger.success(`Built: ${outputFile}`);
+  logger.success(`Built: ${resolvedOutput}`);
 };

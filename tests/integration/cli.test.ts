@@ -1,19 +1,21 @@
 import { describe, it, expect } from 'bun:test';
 import { createRequire } from 'node:module';
 import { execSync } from 'child_process';
-import { existsSync } from 'fs';
+import { existsSync, mkdirSync, writeFileSync } from 'fs';
+import { tmpdir } from 'node:os';
 import path from 'path';
 
 const require = createRequire(import.meta.url);
 const { version } = require('../../package.json') as { version: string };
 
-const BIN_PATH = path.join(import.meta.dir, '../../bin/tqs');
-const hasBinary = existsSync(BIN_PATH);
+const CLI_PATH = path.join(import.meta.dir, '../../dist/cli/index.js');
+const hasCli = existsSync(CLI_PATH);
+const TEMP_DIR = path.join(tmpdir(), `tqs-test-${process.pid}`);
 
 const run = (args: string): string =>
-  execSync(`${BIN_PATH} ${args}`, { encoding: 'utf8', stdio: 'pipe' });
+  execSync(`bun ${CLI_PATH} ${args}`, { encoding: 'utf8', stdio: 'pipe' });
 
-describe.skipIf(!hasBinary)('CLI Integration', () => {
+describe.skipIf(!hasCli)('CLI Integration', () => {
   it('should show help with --help', () => {
     const result = run('--help');
     expect(result).toContain('Usage');
@@ -52,11 +54,11 @@ describe.skipIf(!hasBinary)('CLI Integration', () => {
   });
 
   it('should build a standalone executable with -o', () => {
-    fs.mkdirSync(TEMP_DIR, { recursive: true });
-    const scriptPath = path.join(TEMP_DIR, 'build-me.tsq');
+    mkdirSync(TEMP_DIR, { recursive: true });
+    const scriptPath = path.join(TEMP_DIR, 'build-me.tqs');
     const outputPath = path.join(TEMP_DIR, 'build-me');
 
-    fs.writeFileSync(
+    writeFileSync(
       scriptPath,
       'import * as std from "std";\nstd.printf("standalone build works\\n");\n'
     );

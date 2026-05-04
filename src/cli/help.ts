@@ -10,6 +10,7 @@ export const showHelp = (): void => {
   logger.info(
     `  ${pad(`${CLI_NAME} <script>`, COLUMN_WIDTH)}Compile TypeScript to a native binary`,
   );
+  logger.info(`  ${pad(`${CLI_NAME} <script> -o <output>`, COLUMN_WIDTH)}Specify output binary path`);
   logger.info(`  ${pad(`${CLI_NAME} --help`, COLUMN_WIDTH)}Show this help`);
   logger.info(`  ${pad(`${CLI_NAME} --version`, COLUMN_WIDTH)}Show version`);
   logger.info("");

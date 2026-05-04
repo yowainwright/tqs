@@ -22,7 +22,7 @@ if (shouldShowHelp) {
 
 if (options.scriptFile) {
   try {
-    compile(options.scriptFile);
+    compile(options.scriptFile, options.outputFile);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     logger.error(message);
