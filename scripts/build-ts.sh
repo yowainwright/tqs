@@ -20,3 +20,4 @@ bun build src/cli/index.ts \
   --define "__VERSION__=\"$VERSION\""
 
 bunx tsc --emitDeclarationOnly --declarationMap false --outDir dist
+bunx tsc --project tsconfig.cli.json --noEmit
