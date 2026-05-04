@@ -49,6 +49,7 @@
   "devDependencies": {
     "@release-it/conventional-changelog": "^10.0.6",
     "@socketsecurity/bun-security-scanner": "^1.1.2",
+    "@types/node": "^25.6.0",
     "oxfmt": "^0.45.0",
     "oxlint": "^1.60.0",
     "release-it": "^20.0.0",
