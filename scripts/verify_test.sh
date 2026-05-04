@@ -10,6 +10,9 @@ trap 'rm -rf "$TMP"' EXIT
 assert_eq "$(npm_cache_dir)"           "/tmp/npm-cache" "npm_cache_dir returns default"
 assert_eq "$(npm_cache_dir /custom)"   "/custom"        "npm_cache_dir uses arg"
 
+printf '{"name":"tqs","version":"1.2.3"}' > "$TMP/package.json"
+assert_eq "$(pack_tarball_name "$TMP")" "tqs-1.2.3.tgz" "pack_tarball_name builds filename"
+
 assert_eq "$(cli_entry "$TMP/pkg")" "$TMP/pkg/package/dist/cli/index.js" "cli_entry returns correct path"
 
 write_smoke_script "$TMP/smoke.ts"

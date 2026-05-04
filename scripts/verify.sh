@@ -7,12 +7,20 @@ npm_cache_dir() {
   printf '%s\n' "${1:-/tmp/npm-cache}"
 }
 
+pack_tarball_name() {
+  local root_dir="${1:?root_dir is required}"
+  local name version
+  name="$(bun -e "console.log(require('$root_dir/package.json').name)")"
+  version="$(bun -e "console.log(require('$root_dir/package.json').version)")"
+  printf '%s-%s.tgz\n' "$name" "$version"
+}
+
 run_npm_pack() {
   local root_dir="${1:?root_dir is required}"
   local cache_dir="${2:-$(npm_cache_dir)}"
   (
     cd "$root_dir"
-    npm_config_cache="$cache_dir" npm pack --ignore-scripts --silent
+    npm_config_cache="$cache_dir" npm pack --ignore-scripts > /dev/null
   )
 }
 
@@ -79,7 +87,8 @@ main() {
 
   stage_and_build "$root_dir"
 
-  tarball_name="$(run_npm_pack "$root_dir")"
+  tarball_name="$(pack_tarball_name "$root_dir")"
+  run_npm_pack "$root_dir"
   tarball="$root_dir/$tarball_name"
   packed_dir="$tmp_dir/pkg"
   script="$tmp_dir/smoke.ts"
