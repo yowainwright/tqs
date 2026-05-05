@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { readFileSync, unlinkSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, statSync, unlinkSync, writeFileSync } from "node:fs";
 import { EXIT_FAILURE } from "./constants.js";
 import { logger } from "./logger.js";
 import { isTqsScript } from "./marker.js";
@@ -21,6 +21,9 @@ const exec = (args: string[]): number => {
   }
   return result.status ?? EXIT_FAILURE;
 };
+
+const isExecutable = (filePath: string): boolean =>
+  existsSync(filePath) && (statSync(filePath).mode & 0o111) !== 0;
 
 const hasTqsMarker = (filePath: string): boolean => {
   try {
@@ -68,17 +71,57 @@ const buildJs = (inputFile: string): string => {
   return outFile;
 };
 
-const buildBinary = (jsFile: string, outputFile: string): void => {
-  const result = exec([
+const compileWithQjsc = (jsFile: string, outputFile: string): number =>
+  exec([
     "qjsc",
     "-m",
-    "-M", "std,js_init_module_std",
-    "-M", "os,js_init_module_os",
-    "-o", outputFile,
+    "-o",
+    outputFile,
     jsFile,
   ]);
+
+const compileQjscSource = (jsFile: string, cFile: string): number =>
+  exec([
+    "qjsc",
+    "-e",
+    "-m",
+    "-o",
+    cFile,
+    jsFile,
+  ]);
+
+const linkQjscSource = (cFile: string, outputFile: string): number =>
+  exec([
+    "cc",
+    "-o",
+    outputFile,
+    cFile,
+    "quickjs-ng/build/libqjs-libc.a",
+    "quickjs-ng/build/libqjs.a",
+    "-Iquickjs-ng",
+    "-lm",
+    "-ldl",
+    "-pthread",
+  ]);
+
+const compileQjscNgBinary = (jsFile: string, outputFile: string): number => {
+  const cFile = `${outputFile}.c`;
+  const compileResult = compileQjscSource(jsFile, cFile);
+  if (compileResult !== 0) return compileResult;
+  const linkResult = linkQjscSource(cFile, outputFile);
+  unlinkSync(cFile);
+  return linkResult;
+};
+
+const buildBinary = (jsFile: string, outputFile: string): void => {
+  const result = compileWithQjsc(jsFile, outputFile);
   if (result !== 0) {
     logger.error(`qjsc failed: ${jsFile}`);
+    process.exit(EXIT_FAILURE);
+  }
+  if (isExecutable(outputFile)) return;
+  if (compileQjscNgBinary(jsFile, outputFile) !== 0) {
+    logger.error(`native link failed: ${jsFile}`);
     process.exit(EXIT_FAILURE);
   }
 };
