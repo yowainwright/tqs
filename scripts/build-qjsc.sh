@@ -22,10 +22,6 @@ bin_dir() {
   printf '%s\n' "$root_dir/bin"
 }
 
-pinned_commit() {
-  local root_dir="${1:-$(repo_root "${BASH_SOURCE[0]}")}"
-  tr -d '\n' < "$root_dir/scripts/quickjs-ng.commit"
-}
 
 ensure_repo() {
   local qjs_dir="${1:-$(clone_dir)}"
@@ -33,13 +29,6 @@ ensure_repo() {
   if [ ! -d "$qjs_dir" ]; then
     git clone --depth=1 "$url" "$qjs_dir"
   fi
-}
-
-checkout_commit() {
-  local qjs_dir="${1:-$(clone_dir)}"
-  local commit="${2:?commit is required}"
-  git -C "$qjs_dir" fetch --depth=1 origin "$commit"
-  git -C "$qjs_dir" checkout FETCH_HEAD
 }
 
 cmake_configure() {
@@ -63,15 +52,13 @@ copy_qjsc() {
 
 main() {
   local root_dir="${1:-$(repo_root "${BASH_SOURCE[0]}")}"
-  local qjs_dir commit bd
+  local qjs_dir bd
 
   qjs_dir="$(clone_dir "$root_dir")"
-  commit="$(pinned_commit "$root_dir")"
   bd="$(build_dir "$qjs_dir")"
 
-  echo "Building qjsc from quickjs-ng at $commit..."
+  echo "Building qjsc from quickjs-ng (latest)..."
   ensure_repo "$qjs_dir"
-  checkout_commit "$qjs_dir" "$commit"
   cmake_configure "$bd"
   cmake_build_qjsc "$bd"
   copy_qjsc "$bd" "$(bin_dir "$root_dir")"
