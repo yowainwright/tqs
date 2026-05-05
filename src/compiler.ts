@@ -69,7 +69,14 @@ const buildJs = (inputFile: string): string => {
 };
 
 const buildBinary = (jsFile: string, outputFile: string): void => {
-  const result = exec(["qjsc", "-m", "-o", outputFile, jsFile]);
+  const result = exec([
+    "qjsc",
+    "-m",
+    "-M", "std,js_init_module_std",
+    "-M", "os,js_init_module_os",
+    "-o", outputFile,
+    jsFile,
+  ]);
   if (result !== 0) {
     logger.error(`qjsc failed: ${jsFile}`);
     process.exit(EXIT_FAILURE);
