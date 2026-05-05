@@ -148,6 +148,8 @@ build/
 bin/
 deps/quickjs-ng/
 quickjs-ng/
+tests/fixtures/tqs-comment
+tests/fixtures/tqs-extension
 vendor/
 /*.js
 .next/

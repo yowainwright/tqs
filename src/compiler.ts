@@ -8,13 +8,15 @@ const stripExtension = (filePath: string): string => filePath.replace(/\.(ts|tqs
 
 const toJsPath = (filePath: string): string => filePath.replace(/\.(ts|tqs)$/, ".js");
 
+const isEnoent = (error: Error): boolean =>
+  (error as NodeJS.ErrnoException).code === "ENOENT";
+
 const exec = (args: string[]): number => {
   const [command, ...commandArgs] = args;
-  if (!command) {
-    return EXIT_FAILURE;
-  }
+  if (!command) return EXIT_FAILURE;
   const result = spawnSync(command, commandArgs, { stdio: "inherit" });
   if (result.error) {
+    if (isEnoent(result.error)) logger.error(`command not found: ${command}`);
     return EXIT_FAILURE;
   }
   return result.status ?? EXIT_FAILURE;
@@ -67,7 +69,7 @@ const buildJs = (inputFile: string): string => {
 };
 
 const buildBinary = (jsFile: string, outputFile: string): void => {
-  const result = exec(["qjsc", "-o", outputFile, jsFile]);
+  const result = exec(["qjsc", "-m", "-o", outputFile, jsFile]);
   if (result !== 0) {
     logger.error(`qjsc failed: ${jsFile}`);
     process.exit(EXIT_FAILURE);
