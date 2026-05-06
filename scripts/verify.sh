@@ -9,10 +9,12 @@ npm_cache_dir() {
 
 pack_tarball_name() {
   local root_dir="${1:?root_dir is required}"
-  local name version
+  local name package_name version
   name="$(bun -e "console.log(require('$root_dir/package.json').name)")"
+  package_name="${name#@}"
+  package_name="${package_name//\//-}"
   version="$(bun -e "console.log(require('$root_dir/package.json').version)")"
-  printf '%s-%s.tgz\n' "$name" "$version"
+  printf '%s-%s.tgz\n' "$package_name" "$version"
 }
 
 run_npm_pack() {
@@ -51,6 +53,10 @@ write_smoke_script() {
   cat > "$path" << 'EOF'
 // @tqs-script
 import * as std from "qjs:std";
+if (typeof maybefetch !== "function") {
+  std.err.puts("maybefetch global is missing\n");
+  std.exit(1);
+}
 std.printf("packed artifact works\n");
 EOF
 }
@@ -59,16 +65,32 @@ verify_smoke_binary() {
   local entry="${1:?entry is required}"
   local script="${2:?script is required}"
   local output_path="${script%.ts}"
-  node "$entry" "$script"
+  (cd "$(dirname "$script")" && node "$entry" "$script")
   "$output_path" | grep -q "packed artifact works" || {
     echo "Compiled binary did not produce expected output." >&2
     return 1
   }
 }
 
+build_qjsc() {
+  local root_dir="${1:?root_dir is required}"
+  local tmp_dir qjsc_dir
+  tmp_dir="$(make_temp_dir tqs-qjsc.XXXXXX)"
+  qjsc_dir="$tmp_dir/quickjs-ng"
+
+  if ! QJSC_CLONE_DIR="$qjsc_dir" bash "$root_dir/scripts/build-qjsc.sh" "$root_dir"; then
+    cleanup_dir "$tmp_dir"
+    return 1
+  fi
+
+  cleanup_dir "$tmp_dir"
+}
+
 stage_and_build() {
   local root_dir="${1:?root_dir is required}"
   bash "$root_dir/scripts/stage-quickjs.sh" "$root_dir"
+  build_qjsc "$root_dir"
+  export PATH="$root_dir/bin:$PATH"
   (cd "$root_dir" && bash "$root_dir/scripts/build-ts.sh" "$root_dir")
 }
 

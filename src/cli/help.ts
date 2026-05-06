@@ -1,7 +1,7 @@
 import { CLI_NAME, CLI_DESCRIPTION } from "../constants.js";
 import { logger, pad, color } from "../logger.js";
 
-const COLUMN_WIDTH = 22;
+const COLUMN_WIDTH = 28;
 
 export const showHelp = (): void => {
   logger.info(`${color.bold(CLI_NAME)}  ${color.dim(CLI_DESCRIPTION)}`);

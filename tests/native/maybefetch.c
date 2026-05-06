@@ -12,7 +12,9 @@ void test_fetch_config_creation() {
         .initial_delay_ms = 1000,
         .max_delay_ms = 30000,
         .backoff_factor = 2.0,
-        .timeout_ms = 10000
+        .timeout_ms = 10000,
+        .headers = NULL,
+        .header_count = 0
     };
 
     assert(config.max_retries == 3);
@@ -20,6 +22,8 @@ void test_fetch_config_creation() {
     assert(config.max_delay_ms == 30000);
     assert(config.backoff_factor == 2.0);
     assert(config.timeout_ms == 10000);
+    assert(config.headers == NULL);
+    assert(config.header_count == 0);
 
     printf("✅ FetchConfig creation test passed\n");
 }
@@ -57,7 +61,9 @@ void test_invalid_url_handling() {
         .initial_delay_ms = 100,
         .max_delay_ms = 1000,
         .backoff_factor = 1.5,
-        .timeout_ms = 1000
+        .timeout_ms = 1000,
+        .headers = NULL,
+        .header_count = 0
     };
 
     // Test with invalid URL
@@ -84,7 +90,9 @@ void test_fetch_timeout() {
         .initial_delay_ms = 10,
         .max_delay_ms = 100,
         .backoff_factor = 1.0,
-        .timeout_ms = 1  // Very short timeout
+        .timeout_ms = 1,  // Very short timeout
+        .headers = NULL,
+        .header_count = 0
     };
 
     // Should timeout quickly

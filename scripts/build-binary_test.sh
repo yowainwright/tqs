@@ -11,6 +11,10 @@ assert_eq "$(quickjs_dir "$TMP")"           "$TMP/quickjs-ng"          "quickjs_
 assert_eq "$(build_dir "$TMP/quickjs-ng")"  "$TMP/quickjs-ng/build"    "build_dir"
 assert_eq "$(native_include_dir "$TMP")"    "$TMP/native/include"      "native_include_dir"
 assert_eq "$(bin_dir "$TMP")"               "$TMP/bin"                 "bin_dir"
+assert_eq "$(quickjs_commit_file "$TMP")"   "$TMP/scripts/quickjs-ng.commit" "quickjs_commit_file"
+
+printf 'abc123\n' > "$TMP/commit"
+assert_eq "$(quickjs_commit "$TMP/commit")" "abc123" "quickjs_commit trims newline"
 
 touch "$TMP/exists.h"
 require_native_file "$TMP/exists.h" && ok "require_native_file passes for present file" || fail "require_native_file passes for present file"

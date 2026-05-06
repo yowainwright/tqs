@@ -3,7 +3,7 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "tqs",
+      "name": "@yowainwright/tqs",
       "devDependencies": {
         "@release-it/conventional-changelog": "^10.0.6",
         "@socketsecurity/bun-security-scanner": "^1.1.2",

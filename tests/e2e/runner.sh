@@ -2,6 +2,14 @@
 set -e
 
 COMPOSE="docker-compose -f tests/e2e/docker-compose.yml"
+TQS="bun /app/dist/cli/index.js"
+
+cleanup() {
+  $COMPOSE down >/dev/null 2>&1 || true
+  rm -f tests/e2e/test-scripts/fetch-test tests/e2e/test-scripts/fetch-test.js
+}
+
+trap cleanup EXIT
 
 echo "Running E2E Tests..."
 
@@ -18,15 +26,15 @@ run_networked() {
 
 compile_and_run() {
   local script="$1"
-  local name="${script%.*}"
-  echo "/app/bin/tqs $script && ./$name"
+  local output="./$(basename "${script%.*}")"
+  echo "$TQS $script -o $output && $output"
 }
 
 echo "Test 1: Help command"
-docker run --rm tqs-e2e /app/bin/tqs --help
+docker run --rm tqs-e2e bash -c "$TQS --help"
 
 echo "Test 2: Version command"
-docker run --rm tqs-e2e /app/bin/tqs --version
+docker run --rm tqs-e2e bash -c "$TQS --version"
 
 echo "Test 3: Simple QuickJS script"
 run "$(compile_and_run simple.tqs)"
@@ -40,14 +48,14 @@ run_networked "$(compile_and_run fetch-test.tqs)"
 $COMPOSE down
 
 echo "Test 6: Error handling - non-existent file"
-if docker run --rm tqs-e2e /app/bin/tqs non-existent.tqs 2>/dev/null; then
+if docker run --rm tqs-e2e bash -c "$TQS non-existent.tqs" 2>/dev/null; then
   echo "FAIL: should have failed for non-existent file"
   exit 1
 fi
 echo "PASS: correctly failed for non-existent file"
 
 echo "Test 7: .ts file without @tqs-script marker is rejected"
-if docker run --rm tqs-e2e /app/bin/tqs /app/tests/fixtures/unmarked.ts 2>/dev/null; then
+if docker run --rm tqs-e2e bash -c "$TQS /app/tests/fixtures/unmarked.ts" 2>/dev/null; then
   echo "FAIL: should have rejected unmarked .ts file"
   exit 1
 fi

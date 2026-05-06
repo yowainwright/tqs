@@ -13,11 +13,15 @@ assert_eq "$(npm_cache_dir /custom)"   "/custom"        "npm_cache_dir uses arg"
 printf '{"name":"tqs","version":"1.2.3"}' > "$TMP/package.json"
 assert_eq "$(pack_tarball_name "$TMP")" "tqs-1.2.3.tgz" "pack_tarball_name builds filename"
 
+printf '{"name":"@yowainwright/tqs","version":"1.2.3"}' > "$TMP/package.json"
+assert_eq "$(pack_tarball_name "$TMP")" "yowainwright-tqs-1.2.3.tgz" "pack_tarball_name supports scoped packages"
+
 assert_eq "$(cli_entry "$TMP/pkg")" "$TMP/pkg/package/dist/cli/index.js" "cli_entry returns correct path"
 
 write_smoke_script "$TMP/smoke.ts"
 assert_exists  "$TMP/smoke.ts"                                        "write_smoke_script creates file"
 assert_contains "$(cat "$TMP/smoke.ts")" "@tqs-script"                "write_smoke_script has marker"
+assert_contains "$(cat "$TMP/smoke.ts")" "maybefetch"                 "write_smoke_script checks maybefetch"
 assert_contains "$(cat "$TMP/smoke.ts")" "packed artifact works"      "write_smoke_script has expected output"
 
 touch "$TMP/tarball.tgz"
