@@ -10,15 +10,25 @@ export const defaultConfig: FetchConfig = {
   timeoutMs: 10000,
 };
 
+type MaybeFetchGlobal = (
+  url: string,
+  maxRetries: number,
+  initialDelayMs: number,
+  maxDelayMs: number,
+  backoffFactor: number,
+  timeoutMs: number,
+  headers: readonly string[],
+) => string | null;
+
 const callGlobal = (url: string, config: FetchConfig): string | null => {
   const global = globalThis as Record<string, unknown>;
-  const maybefetchFn = global["maybefetch"] as
-    | ((url: string, ...args: number[]) => string | null)
-    | undefined;
+  const maybefetchFn = global["maybefetch"] as MaybeFetchGlobal | undefined;
 
   if (!maybefetchFn) {
     throw new Error("maybefetch is not available. Run in a compiled QuickJS binary.");
   }
+
+  const headers = Object.entries(config.headers ?? {}).map(([name, value]) => `${name}: ${value}`);
 
   return maybefetchFn(
     url,
@@ -27,6 +37,7 @@ const callGlobal = (url: string, config: FetchConfig): string | null => {
     config.maxDelayMs,
     config.backoffFactor,
     config.timeoutMs,
+    headers,
   );
 };
 

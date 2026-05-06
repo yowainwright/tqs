@@ -146,6 +146,15 @@ integration-test-files/
 dist/
 build/
 bin/
+deps/quickjs-ng/
 quickjs-ng/
+tests/fixtures/tqs-comment
+tests/fixtures/tqs-extension
+vendor/
 /*.js
 .next/
+
+# Beads / Dolt files (added by bd init)
+.dolt/
+*.db
+.beads-credential-key

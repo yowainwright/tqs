@@ -29,4 +29,41 @@ describe('maybeFetch', () => {
     };
     expect(() => maybeFetch('https://example.com', config)).toThrow('maybefetch is not available');
   });
+
+  it('should pass headers to global maybefetch', () => {
+    const calls: unknown[][] = [];
+    const global = globalThis as unknown as Record<string, unknown>;
+    const original = global.maybefetch;
+    global.maybefetch = (...args: unknown[]) => {
+      calls.push(args);
+      return 'ok';
+    };
+
+    const config: FetchConfig = {
+      ...defaultConfig,
+      headers: {
+        Accept: 'application/json',
+        Authorization: 'Bearer token',
+      },
+    };
+
+    try {
+      expect(maybeFetch('https://example.com', config)).toBe('ok');
+      expect(calls[0]).toEqual([
+        'https://example.com',
+        3,
+        1000,
+        30000,
+        2,
+        10000,
+        ['Accept: application/json', 'Authorization: Bearer token'],
+      ]);
+    } finally {
+      if (original === undefined) {
+        delete global.maybefetch;
+      } else {
+        global.maybefetch = original;
+      }
+    }
+  });
 });

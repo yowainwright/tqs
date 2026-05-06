@@ -1,5 +1,5 @@
 {
-  "name": "tqs-cli",
+  "name": "@yowainwright/tqs",
   "version": "0.0.5",
   "description": "Compile TypeScript to fast, small standalone native binaries via QuickJS",
   "type": "module",
@@ -11,15 +11,21 @@
     "build": "bun run build:quickjs && bun run build:ts",
     "build:quickjs": "bash scripts/build-binary.sh",
     "build:ts": "bash scripts/build-ts.sh",
+    "clean:generated": "bash scripts/clean.sh",
+    "setup": "bash scripts/setup.sh",
+    "stage:quickjs": "bash scripts/stage-quickjs.sh",
     "start": "bun ./dist/cli/index.js",
     "format": "oxfmt src",
     "format:fix": "oxfmt --write src",
     "lint": "oxlint src",
     "lint:fix": "oxlint --fix src",
+    "smoke:pack": "bash scripts/verify.sh",
     "typecheck": "tsc --noEmit",
-    "test": "bun test",
-    "install-hooks": "bash scripts/install-hooks.sh",
-    "prepare": "bash scripts/install-hooks.sh && bun run build:ts",
+    "test": "PATH=$PWD/bin:$PATH bun test",
+    "test:sh": "bash scripts/common_test.sh && bash scripts/clean_test.sh && bash scripts/stage-quickjs_test.sh && bash scripts/setup_test.sh && bash scripts/build-ts_test.sh && bash scripts/build-binary_test.sh && bash scripts/verify_test.sh",
+    "prepare": "bash scripts/setup.sh && bun run build:ts",
+    "prepack": "bun run stage:quickjs && bun run build:ts",
+    "postpack": "bash scripts/clean.sh . quickjs",
     "release": "release-it"
   },
   "keywords": [
@@ -32,6 +38,9 @@
   ],
   "author": "Jeffry Wainwright",
   "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/yowainwright/tqs.git"
@@ -41,18 +50,22 @@
   },
   "homepage": "https://github.com/yowainwright/tqs#readme",
   "devDependencies": {
+    "@release-it/conventional-changelog": "^10.0.6",
     "@socketsecurity/bun-security-scanner": "^1.1.2",
+    "@types/node": "^25.6.0",
     "oxfmt": "^0.45.0",
     "oxlint": "^1.60.0",
-    "release-it": "^19.2.4",
+    "release-it": "^20.0.0",
     "typescript": "^6.0.2"
   },
   "dependencies": {},
   "peerDependencies": {},
   "files": [
     "dist/",
-    "bin/",
-    "src/types.ts"
+    "src/types.ts",
+    "native/include/",
+    "native/src/",
+    "deps/quickjs-ng/"
   ],
   "exports": {
     ".": "./dist/index.js",
@@ -63,16 +76,25 @@
     "bun": ">=1.0.0"
   },
   "release-it": {
+    "plugins": {
+      "@release-it/conventional-changelog": {
+        "preset": "angular",
+        "infile": "CHANGELOG.md"
+      }
+    },
     "git": {
       "commitMessage": "chore: release v${version}",
       "tagName": "v${version}",
-      "tagAnnotation": "Release v${version}"
+      "tagAnnotation": "Release v${version}",
+      "requireBranch": "main",
+      "requireCleanWorkingDir": true
     },
     "github": {
-      "release": false
+      "release": true,
+      "releaseName": "v${version}"
     },
     "npm": {
-      "publish": false
+      "publish": true
     },
     "hooks": {
       "before:init": [
