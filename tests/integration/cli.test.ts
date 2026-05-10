@@ -35,7 +35,7 @@ describe.skipIf(!hasCli)('CLI Integration', () => {
 
   it('should show help with -h', () => {
     const result = run('-h');
-    expect(result).toContain('compile typescript');
+    expect(result).toContain('Compile TypeScript');
   });
 
   it('should show version with --version', () => {
