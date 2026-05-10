@@ -1,12 +1,10 @@
-version: '3.8'
-
 services:
   tqs-test:
     build:
       context: ../../
       dockerfile: tests/e2e/Dockerfile
     volumes:
-      - ./test-scripts:/test-scripts:ro
+      - ./test-scripts:/test-scripts
     working_dir: /test-scripts
     networks:
       - test-network

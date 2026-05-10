@@ -1,0 +1,17 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "types": ["node"],
+    "declaration": false,
+    "declarationMap": false,
+    "sourceMap": false
+  },
+  "include": [
+    "src/cli/**/*",
+    "src/compiler.ts",
+    "src/logger.ts",
+    "src/types.ts",
+    "src/constants.ts",
+    "src/marker.ts"
+  ]
+}

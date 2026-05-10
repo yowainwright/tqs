@@ -14,6 +14,8 @@ typedef struct {
     int max_delay_ms;
     double backoff_factor;
     int timeout_ms;
+    const char* const* headers;
+    size_t header_count;
 } FetchConfig;
 
 FetchResponse* maybefetch(const char* url, const FetchConfig* config);

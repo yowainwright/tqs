@@ -6,9 +6,8 @@ RUN apt-get update && apt-get install -y \
     build-essential \
     git \
     cmake \
+    unzip \
     libcurl4-openssl-dev \
-    nodejs \
-    npm \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Bun
@@ -18,20 +17,21 @@ ENV PATH="/root/.bun/bin:$PATH"
 # Create working directory
 WORKDIR /app
 
-# Copy package files
-COPY package.json ./
-COPY tsup.config.ts ./
-
-# Install dependencies
-RUN npm install
-
-# Copy source code
+# Copy source code and package files
+COPY package.json bun.lock bunfig.toml bunfig.ci.toml tsconfig.json tsconfig.cli.json ./
 COPY src/ ./src/
 COPY native/ ./native/
 COPY scripts/ ./scripts/
+COPY tests/fixtures/ ./tests/fixtures/
+
+# Install dependencies
+RUN bun install --config=bunfig.ci.toml
 
 # Build the project
-RUN npm run build
+RUN bun run stage:quickjs
+RUN bash scripts/build-qjsc.sh
+RUN bun run build:ts
+ENV PATH="/app/bin:$PATH"
 
 # Create test scripts directory
 RUN mkdir -p /test-scripts
@@ -43,4 +43,4 @@ COPY tests/e2e/test-scripts/ /test-scripts/
 WORKDIR /test-scripts
 
 # Command to run e2e tests
-CMD ["/app/bin/tqs", "--help"]
+CMD ["bun", "/app/dist/cli/index.js", "--help"]

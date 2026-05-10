@@ -22,5 +22,6 @@ declare global {
     maxDelayMs: number,
     backoffFactor: number,
     timeoutMs: number,
+    headers?: readonly string[],
   ): string | null;
 }

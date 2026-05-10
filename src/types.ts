@@ -5,6 +5,7 @@ export interface CliOptions {
 
 export interface ParsedArgs extends CliOptions {
   readonly scriptFile?: string | undefined;
+  readonly outputFile?: string | undefined;
 }
 
 export interface FetchConfig {
@@ -13,6 +14,7 @@ export interface FetchConfig {
   readonly maxDelayMs: number;
   readonly backoffFactor: number;
   readonly timeoutMs: number;
+  readonly headers?: Readonly<Record<string, string>> | undefined;
 }
 
 export interface Logger {

@@ -95,4 +95,6 @@ main() {
   install_all_hooks "$repo_dir/.git/hooks"
 }
 
-main "$@"
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+  main "$@"
+fi

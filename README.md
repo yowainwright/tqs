@@ -23,6 +23,11 @@ Great for typed, tested scripts that start fast and run fast — think LLM hooks
 
 ## Installation
 
+**npm**
+```bash
+npm i tqs@npm:@yowainwright/tqs
+```
+
 **macOS**
 ```bash
 brew install yowainwright/tap/tqs
@@ -176,6 +181,20 @@ import { maybeFetch, defaultConfig } from 'tqs';
 const body = maybeFetch('https://example.com/api', { ...defaultConfig, maxRetries: 5 });
 ```
 
+Send request headers with the `headers` config:
+
+```typescript
+import { maybeFetch, defaultConfig } from 'tqs';
+
+const body = maybeFetch('https://example.com/api', {
+  ...defaultConfig,
+  headers: {
+    Accept: 'application/json',
+    Authorization: 'Bearer token',
+  },
+});
+```
+
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | `url` | `string` | URL to fetch |
@@ -184,12 +203,54 @@ const body = maybeFetch('https://example.com/api', { ...defaultConfig, maxRetrie
 | `maxDelayMs` | `number` | Maximum delay between retries (ms) |
 | `backoffFactor` | `number` | Multiplier applied to delay each retry |
 | `timeoutMs` | `number` | Request timeout (ms) |
+| `headers` | `Record<string, string>` | Optional request headers |
 
 Returns `string` on success (2xx response body), `null` on failure after all retries.
 
+## Recipes
+
+### Retry a synchronous operation
+
+This local helper retries when the callback throws or returns `null`/`undefined`. It sleeps synchronously with exponential backoff between attempts.
+
+```typescript
+const sleep = (milliseconds: number): void => {
+  if (milliseconds <= 0) return;
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, milliseconds);
+};
+
+const maybeRetry = <T>(
+  callback: (attempt: number) => T | null | undefined,
+  maxRetries = 3,
+  initialDelayMs = 100,
+  maxDelayMs = 1000,
+  backoffFactor = 2.0,
+): T | null => {
+  const run = (attempt: number): T | null => {
+    if (attempt > maxRetries) return null;
+
+    try {
+      const result = callback(attempt);
+      if (result !== null && result !== undefined) return result;
+    } catch {}
+
+    if (attempt >= maxRetries) return null;
+    sleep(Math.min(maxDelayMs, initialDelayMs * backoffFactor ** (attempt - 1)));
+    return run(attempt + 1);
+  };
+
+  return run(1);
+};
+
+const result = maybeRetry((attempt) => {
+  if (attempt < 3) return null;
+  return 'ready';
+}, 5);
+```
+
 ## TypeScript API
 
-`tqs` exports typed wrappers around the `maybefetch` global for use in compiled scripts:
+`tqs` exports typed wrappers around the `maybefetch` global for compiled scripts:
 
 ```typescript
 import { maybeFetch, defaultConfig } from 'tqs';
@@ -205,6 +266,7 @@ import type { FetchConfig } from 'tqs';
 | `maxDelayMs` | `30000` |
 | `backoffFactor` | `2.0` |
 | `timeoutMs` | `10000` |
+| `headers` | `undefined` |
 
 ### `maybeFetch(url, config?): string | null`
 
