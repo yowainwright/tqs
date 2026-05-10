@@ -155,6 +155,7 @@ vendor/
 .next/
 
 **/*.dSYM/
+/out.c
 
 # Beads / Dolt files (added by bd init)
 .dolt/

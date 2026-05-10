@@ -1,7 +1,7 @@
-import { describe, it, expect } from 'bun:test';
+import { describe, it, expect, afterAll } from 'bun:test';
 import { createRequire } from 'node:module';
 import { execSync } from 'child_process';
-import { existsSync, mkdirSync, writeFileSync } from 'fs';
+import { existsSync, mkdirSync, rmSync, writeFileSync } from 'fs';
 import { tmpdir } from 'node:os';
 import path from 'path';
 
@@ -25,6 +25,10 @@ const run = (args: string): string =>
   execSync(`bun ${CLI_PATH} ${args}`, { encoding: 'utf8', stdio: 'pipe' });
 
 describe.skipIf(!hasCli)('CLI Integration', () => {
+  afterAll(() => {
+    if (existsSync(TEMP_DIR)) rmSync(TEMP_DIR, { recursive: true, force: true });
+  });
+
   it('should show help with --help', () => {
     const result = run('--help');
     expect(result).toContain('Usage');
