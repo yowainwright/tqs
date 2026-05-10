@@ -107,19 +107,25 @@ const buildJs = (inputFile: string): string => {
 const compileQjscSource = (jsFile: string, cFile: string): number =>
   exec(["qjsc", "-e", "-m", "-o", cFile, jsFile]);
 
+const INCLUDE_ANCHOR = '#include "quickjs-libc.h"';
+const CTX_RETURN_ANCHOR = "  return ctx;\n}\n\nint main";
+
 const addMaybefetchBinding = (cFile: string): boolean => {
   const contents = readFileSync(cFile, "utf8");
-  const nextContents = contents
+  if (!contents.includes(INCLUDE_ANCHOR) || !contents.includes(CTX_RETURN_ANCHOR)) {
+    return false;
+  }
+  const patched = contents
     .replace(
-      '#include "quickjs-libc.h"',
-      '#include "quickjs-libc.h"\nextern void js_std_add_maybefetch(JSContext *ctx);',
+      INCLUDE_ANCHOR,
+      `${INCLUDE_ANCHOR}\nextern void js_std_add_maybefetch(JSContext *ctx);`,
     )
     .replace(
-      "  return ctx;\n}\n\nint main",
-      "  js_std_add_maybefetch(ctx);\n  return ctx;\n}\n\nint main",
+      CTX_RETURN_ANCHOR,
+      `  js_std_add_maybefetch(ctx);\n${CTX_RETURN_ANCHOR}`,
     );
-  writeFileSync(cFile, nextContents);
-  return nextContents !== contents;
+  writeFileSync(cFile, patched);
+  return true;
 };
 
 const linkQjscSource = (
@@ -171,12 +177,6 @@ const compileQjscNgBinary = (jsFile: string, outputFile: string): number => {
   return linkResult;
 };
 
-const buildBinary = (jsFile: string, outputFile: string): void => {
-  if (compileQjscNgBinary(jsFile, outputFile) === 0) return;
-  logger.error(`native link failed: ${jsFile}`);
-  process.exit(EXIT_FAILURE);
-};
-
 export const compile = (inputFile: string, outputFile?: string): void => {
   const resolvedOutput = outputFile ?? stripExtension(inputFile);
   const isTsOnly = inputFile.endsWith(".ts");
@@ -192,9 +192,12 @@ export const compile = (inputFile: string, outputFile?: string): void => {
   logger.step(`Compiling: ${inputFile} -> ${resolvedOutput}`);
 
   const jsFile = isTypeScript ? buildJs(inputFile) : inputFile;
-  buildBinary(jsFile, resolvedOutput);
-
-  if (isTypeScript) unlinkSync(jsFile);
+  const result = compileQjscNgBinary(jsFile, resolvedOutput);
+  if (isTypeScript) cleanupIfExists(jsFile);
+  if (result !== 0) {
+    logger.error(`native link failed: ${jsFile}`);
+    process.exit(EXIT_FAILURE);
+  }
 
   logger.success(`Built: ${resolvedOutput}`);
 };

@@ -73,7 +73,7 @@ describe.skipIf(!hasCli)('CLI Integration', () => {
 
     writeFileSync(
       scriptPath,
-      'import * as std from "std";\nstd.printf("standalone build works\\n");\n'
+      '// @tqs-script\nimport * as std from "std";\nstd.printf("standalone build works\\n");\n'
     );
 
     run(`${scriptPath} -o ${outputPath}`);
