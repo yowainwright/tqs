@@ -5,16 +5,78 @@ on:
     tags:
       - 'v*'
 
+concurrency:
+  group: release-${{ github.ref_name }}
+  cancel-in-progress: false
+
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  create-release:
-    name: Create Release
+  publish-npm:
+    name: Publish npm
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Install dependencies
+        run: bun install --config=bunfig.ci.toml
+
+      - name: Verify tag matches package version
+        run: |
+          VERSION="$(node -p "require('./package.json').version")"
+          test "v$VERSION" = "${GITHUB_REF_NAME}"
+
+      - name: Lint
+        run: bun run lint
+
+      - name: Build TypeScript
+        run: bun run build:ts
+
+      - name: Test
+        run: bun run test
+
+      - name: Publish to npm
+        run: |
+          PACKAGE_NAME="$(node -p "require('./package.json').name")"
+          VERSION="$(node -p "require('./package.json').version")"
+          if npm view "$PACKAGE_NAME@$VERSION" version >/dev/null 2>&1; then
+            echo "$PACKAGE_NAME@$VERSION is already published."
+            exit 0
+          fi
+          npm publish --access public --provenance
+
+  create-release:
+    name: Create GitHub Release
+    needs: publish-npm
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Create release
-        run: gh release create "${{ github.ref_name }}" --title "${{ github.ref_name }}" --generate-notes --repo "${{ github.repository }}"
+        run: |
+          if gh release view "${{ github.ref_name }}" --repo "${{ github.repository }}" >/dev/null 2>&1; then
+            echo "Release ${{ github.ref_name }} already exists."
+            exit 0
+          fi
+          gh release create "${{ github.ref_name }}" \
+            --title "${{ github.ref_name }}" \
+            --generate-notes \
+            --repo "${{ github.repository }}"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -28,9 +90,11 @@ jobs:
             target: darwin-arm64
           - os: ubuntu-latest
             target: linux-x64
-
     runs-on: ${{ matrix.os }}
-
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
     steps:
       - uses: actions/checkout@v4
 
@@ -40,41 +104,75 @@ jobs:
 
       - name: Install dependencies (macOS)
         if: runner.os == 'macOS'
-        run: brew install curl
+        run: brew install curl cmake
 
       - name: Build QuickJS binary
         shell: bash
         run: |
           if [[ "$RUNNER_OS" == "macOS" ]]; then
-            export EXTRA_CMAKE_OPTS="-DCMAKE_PREFIX_PATH=$(brew --prefix curl)"
+            CURL_PREFIX="$(brew --prefix curl)"
+            export EXTRA_CMAKE_OPTS="-DCMAKE_PREFIX_PATH=$CURL_PREFIX"
           fi
           bash scripts/build-binary.sh
 
       - name: Stage binary
         run: cp bin/tqs bin/tqs-${{ matrix.target }}
 
+      - name: Attest binary
+        uses: actions/attest@v4
+        with:
+          subject-path: bin/tqs-${{ matrix.target }}
+
       - name: Upload to release
         run: gh release upload ${{ github.ref_name }} bin/tqs-${{ matrix.target }} --clobber
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  update-homebrew:
-    name: Update Homebrew Formula
+  checksums:
+    name: Publish checksums
     needs: build
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Download release assets
         run: |
           gh release download "${{ github.ref_name }}" \
             --repo "${{ github.repository }}" \
+            --pattern 'tqs-*' \
+            --dir /tmp/release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Compute SHA256 hashes
+        working-directory: /tmp/release
+        run: sha256sum tqs-darwin-arm64 tqs-linux-x64 > checksums.txt
+
+      - name: Upload checksums
+        run: gh release upload ${{ github.ref_name }} /tmp/release/checksums.txt --clobber
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  update-homebrew:
+    name: Update Homebrew Formula
+    needs: checksums
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Download release assets
+        run: |
+          gh release download "${{ github.ref_name }}" \
+            --repo "${{ github.repository }}" \
+            --pattern 'tqs-*' \
             --dir /tmp/release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Compute SHA256 hashes
         run: |
-          echo "SHA_DARWIN_ARM64=$(sha256sum /tmp/release/tqs-darwin-arm64 | awk '{print $1}')" >> $GITHUB_ENV
-          echo "SHA_LINUX_X64=$(sha256sum /tmp/release/tqs-linux-x64 | awk '{print $1}')" >> $GITHUB_ENV
+          echo "SHA_DARWIN_ARM64=$(sha256sum /tmp/release/tqs-darwin-arm64 | awk '{print $1}')" >> "$GITHUB_ENV"
+          echo "SHA_LINUX_X64=$(sha256sum /tmp/release/tqs-linux-x64 | awk '{print $1}')" >> "$GITHUB_ENV"
 
       - name: Checkout homebrew tap
         uses: actions/checkout@v4

@@ -90,11 +90,11 @@
       "requireCleanWorkingDir": true
     },
     "github": {
-      "release": true,
+      "release": false,
       "releaseName": "v${version}"
     },
     "npm": {
-      "publish": true
+      "publish": false
     },
     "hooks": {
       "before:init": [

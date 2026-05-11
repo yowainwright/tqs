@@ -120,8 +120,8 @@ All CLI source (`src/cli/`, `src/compiler.ts`, `src/logger.ts`) runs inside Quic
 ## Release
 
 - Version is in `package.json` — tsup injects it as `__VERSION__` in the CLI build
-- `bun run release` runs release-it: bumps version, creates GitHub release + tag
-- GitHub Actions `release.yml` triggers on `v*` tags and builds `bin/tqs-darwin-arm64`, `bin/tqs-darwin-x64`, `bin/tqs-linux-x64`
+- `bun run release` runs release-it: bumps version, changelog, release commit, and tag
+- GitHub Actions `release.yml` triggers on `v*` tags, publishes npm with trusted publishing, creates the GitHub release, uploads native binaries, publishes checksums, attests binaries, and updates Homebrew
 - Pre-release checks (configured in `package.json`): `bun run lint`, `bun run build:ts`, `bun run test`
 
 ## Commands
@@ -133,7 +133,7 @@ bun run typecheck         # tsc --noEmit
 bun run build:ts          # tsup (library + CLI)
 bun run build:quickjs     # QuickJS native binary → bin/tqs
 bun test                  # unit + integration tests
-bun run release           # release-it (bump version + GitHub release)
+bun run release           # release-it (bump version + push tag)
 ```
 
 ## Links
