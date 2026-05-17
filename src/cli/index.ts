@@ -20,12 +20,15 @@ if (shouldShowHelp) {
   process.exit(EXIT_SUCCESS);
 }
 
-if (options.scriptFile) {
-  try {
-    compile(options.scriptFile, options.outputFile);
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    logger.error(message);
-    process.exit(EXIT_FAILURE);
-  }
+if (!options.scriptFile) {
+  showHelp();
+  process.exit(EXIT_FAILURE);
+}
+
+try {
+  compile(options.scriptFile, options.outputFile);
+} catch (err) {
+  const message = err instanceof Error ? err.message : String(err);
+  logger.error(message);
+  process.exit(EXIT_FAILURE);
 }

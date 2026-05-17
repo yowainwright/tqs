@@ -24,6 +24,11 @@ default_qjsc_path() {
   printf '%s\n' "$root_dir/bin/qjsc"
 }
 
+default_runtime_path() {
+  local root_dir="${1:-$(repo_root "${BASH_SOURCE[0]}")}"
+  printf '%s\n' "$root_dir/bin/tqs-runtime"
+}
+
 default_dist_dir() {
   local root_dir="${1:-$(repo_root "${BASH_SOURCE[0]}")}"
   printf '%s\n' "$root_dir/dist"
@@ -42,6 +47,11 @@ remove_deps_root_if_empty() {
 remove_qjsc() {
   local qjsc_path="${1:-$(default_qjsc_path)}"
   remove_file_if_present "$qjsc_path"
+}
+
+remove_runtime() {
+  local runtime_path="${1:-$(default_runtime_path)}"
+  remove_file_if_present "$runtime_path"
 }
 
 remove_bin_dir_if_empty() {
@@ -66,6 +76,12 @@ clean_qjsc() {
   remove_bin_dir_if_empty "$(default_bin_dir "$root_dir")"
 }
 
+clean_runtime() {
+  local root_dir="${1:-$(repo_root "${BASH_SOURCE[0]}")}"
+  remove_runtime "$(default_runtime_path "$root_dir")"
+  remove_bin_dir_if_empty "$(default_bin_dir "$root_dir")"
+}
+
 clean_dist() {
   local root_dir="${1:-$(repo_root "${BASH_SOURCE[0]}")}"
   remove_dist "$(default_dist_dir "$root_dir")"
@@ -75,6 +91,7 @@ clean_all() {
   local root_dir="${1:-$(repo_root "${BASH_SOURCE[0]}")}"
   clean_quickjs "$root_dir"
   clean_qjsc "$root_dir"
+  clean_runtime "$root_dir"
   clean_dist "$root_dir"
 }
 
@@ -92,11 +109,14 @@ main() {
     qjsc)
       clean_qjsc "$root_dir"
       ;;
+    runtime)
+      clean_runtime "$root_dir"
+      ;;
     dist)
       clean_dist "$root_dir"
       ;;
     *)
-      echo "Unknown clean target '$target'. Expected one of: all, quickjs, qjsc, dist." >&2
+      echo "Unknown clean target '$target'. Expected one of: all, quickjs, qjsc, runtime, dist." >&2
       return 1
       ;;
   esac

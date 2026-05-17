@@ -29,9 +29,7 @@ RUN bun install --config=bunfig.ci.toml
 
 # Build the project
 RUN bun run stage:quickjs
-RUN bash scripts/build-qjsc.sh
 RUN bun run build:ts
-ENV PATH="/app/bin:$PATH"
 
 # Create test scripts directory
 RUN mkdir -p /test-scripts

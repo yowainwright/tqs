@@ -53,31 +53,31 @@ declare module "qjs:os" {
 }
 
 declare module "fs" {
-  const _: "Node.js fs module is not available in QuickJS. Use os module instead.";
-  export = _;
+  const unavailable: "Node.js fs module is not available in QuickJS. Use os module instead.";
+  export = unavailable;
 }
 
 declare module "path" {
-  const _: "Node.js path module is not available in QuickJS. Use os module instead.";
-  export = _;
+  const unavailable: "Node.js path module is not available in QuickJS. Use os module instead.";
+  export = unavailable;
 }
 
 declare module "http" {
-  const _: "Node.js http module is not available in QuickJS. Use maybefetch() instead.";
-  export = _;
+  const unavailable: "Node.js http module is not available in QuickJS. Use maybefetch() instead.";
+  export = unavailable;
 }
 
 declare module "https" {
-  const _: "Node.js https module is not available in QuickJS. Use maybefetch() instead.";
-  export = _;
+  const unavailable: "Node.js https module is not available in QuickJS. Use maybefetch() instead.";
+  export = unavailable;
 }
 
 declare module "process" {
-  const _: "Node.js process module is not available in QuickJS. Use std module instead.";
-  export = _;
+  const unavailable: "Node.js process module is not available in QuickJS. Use std module instead.";
+  export = unavailable;
 }
 
 declare module "child_process" {
-  const _: "Node.js child_process module is not available in QuickJS. Use os.exec() instead.";
-  export = _;
+  const unavailable: "Node.js child_process module is not available in QuickJS. Use os.exec() instead.";
+  export = unavailable;
 }

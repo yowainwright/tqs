@@ -31,11 +31,11 @@ assert_contains "$(cat "$TMP/tqs_main.c")" "js_std_add_maybefetch"   "write_tqs_
 
 printf 'cmake_minimum_required(VERSION 3.14)\n' > "$TMP/CMakeLists.txt"
 patch_cmakelists "$TMP/CMakeLists.txt"
-assert_contains "$(cat "$TMP/CMakeLists.txt")" "tqs_exe" "patch_cmakelists adds tqs_exe target"
+assert_contains "$(cat "$TMP/CMakeLists.txt")" "tqs_runtime" "patch_cmakelists adds tqs_runtime target"
 
-count_before="$(grep -c "tqs_exe" "$TMP/CMakeLists.txt")"
+count_before="$(grep -c "tqs_runtime" "$TMP/CMakeLists.txt")"
 patch_cmakelists "$TMP/CMakeLists.txt"
-count_after="$(grep -c "tqs_exe" "$TMP/CMakeLists.txt")"
+count_after="$(grep -c "tqs_runtime" "$TMP/CMakeLists.txt")"
 assert_eq "$count_before" "$count_after" "patch_cmakelists is idempotent"
 
 done_testing
