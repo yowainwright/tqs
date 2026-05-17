@@ -18,8 +18,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  build:
-    name: Build ${{ matrix.target }}
+  build-runtime:
+    name: Build runtime ${{ matrix.target }}
     needs: create-release
     strategy:
       matrix:
@@ -40,9 +40,9 @@ jobs:
 
       - name: Install dependencies (macOS)
         if: runner.os == 'macOS'
-        run: brew install curl
+        run: brew install curl cmake
 
-      - name: Build QuickJS binary
+      - name: Build QuickJS runtime
         shell: bash
         run: |
           if [[ "$RUNNER_OS" == "macOS" ]]; then
@@ -50,53 +50,10 @@ jobs:
           fi
           bash scripts/build-binary.sh
 
-      - name: Stage binary
-        run: cp bin/tqs bin/tqs-${{ matrix.target }}
+      - name: Stage runtime
+        run: cp bin/tqs-runtime bin/tqs-runtime-${{ matrix.target }}
 
       - name: Upload to release
-        run: gh release upload ${{ github.ref_name }} bin/tqs-${{ matrix.target }} --clobber
+        run: gh release upload ${{ github.ref_name }} bin/tqs-runtime-${{ matrix.target }} --clobber
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  update-homebrew:
-    name: Update Homebrew Formula
-    needs: build
-    runs-on: ubuntu-latest
-    steps:
-      - name: Download release assets
-        run: |
-          gh release download "${{ github.ref_name }}" \
-            --repo "${{ github.repository }}" \
-            --dir /tmp/release
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Compute SHA256 hashes
-        run: |
-          echo "SHA_DARWIN_ARM64=$(sha256sum /tmp/release/tqs-darwin-arm64 | awk '{print $1}')" >> $GITHUB_ENV
-          echo "SHA_LINUX_X64=$(sha256sum /tmp/release/tqs-linux-x64 | awk '{print $1}')" >> $GITHUB_ENV
-
-      - name: Checkout homebrew tap
-        uses: actions/checkout@v4
-        with:
-          repository: yowainwright/homebrew-tap
-          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
-          path: homebrew-tap
-
-      - name: Update formula
-        run: |
-          VERSION="${{ github.ref_name }}"
-          VERSION_NUM="${VERSION#v}"
-          cd homebrew-tap
-          sed -i "s/  version \".*\"/  version \"$VERSION_NUM\"/" Formula/tqs.rb
-          sed -i "/tqs-darwin-arm64\"/{n;s/sha256 \"[^\"]*\"/sha256 \"$SHA_DARWIN_ARM64\"/}" Formula/tqs.rb
-          sed -i "/tqs-linux-x64\"/{n;s/sha256 \"[^\"]*\"/sha256 \"$SHA_LINUX_X64\"/}" Formula/tqs.rb
-
-      - name: Commit and push
-        run: |
-          cd homebrew-tap
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add Formula/tqs.rb
-          git diff --cached --quiet || git commit -m "chore: update tqs to ${{ github.ref_name }}"
-          git push

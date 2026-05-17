@@ -4,33 +4,34 @@ Reference for AI agents working on the tqs codebase. Read this first.
 
 ## What tqs does
 
-`tqs` compiles TypeScript to standalone native binaries via [QuickJS-NG](https://github.com/quickjs-ng/quickjs). It bundles TypeScript with `bun build`, compiles the result with `qjsc`, and links in `maybefetch` — a curl-backed HTTP client with retry/backoff — as a C extension.
+`tqs` compiles TypeScript to standalone native binaries via [QuickJS-NG](https://github.com/quickjs-ng/quickjs). It bundles TypeScript with `bun build`, then uses the bundled compiler backend to generate a QuickJS executable with `maybefetch` — a curl-backed HTTP client with retry/backoff — linked in as a C extension.
 
 ```
 my-script.ts
   → bun build (bundle to self-contained JS, browser target)
-  → qjsc (QuickJS compiler → native binary with embedded runtime)
+  → scripts/tqs-qjsc.sh (QuickJS compiler backend → native binary)
   → ./my-script
 ```
 
-The output binary has no runtime dependencies: QuickJS, maybefetch, and all JS source are statically embedded.
+The output binary embeds QuickJS, maybefetch, and all JS source. Native system libraries such as libcurl may still be dynamically linked by the platform toolchain.
 
 ## Source map
 
 | File | Responsibility |
 |---|---|
-| `src/cli/index.ts` | Entry point — reads `scriptArgs`, routes to help/version/compile |
+| `src/cli/index.ts` | Entry point — reads `process.argv`, routes to help/version/compile |
 | `src/cli/args.ts` | Argument parsing — returns `ParsedArgs` |
 | `src/cli/help.ts` | Renders help output |
-| `src/cli/version.ts` | Renders version string (uses `__VERSION__` define injected by tsup) |
-| `src/compiler.ts` | Compilation pipeline: TypeScript → JS (`bun build`) → binary (`qjsc`) |
+| `src/cli/version.ts` | Renders version string (uses `__VERSION__` define injected by Bun build) |
+| `src/compiler.ts` | Compilation pipeline: TypeScript → JS (`bun build`) → binary (`scripts/tqs-qjsc.sh` by default, `TQS_QJSC` override) |
 | `src/maybefetch.ts` | TypeScript wrapper for maybefetch — supports QuickJS global or Node.js NativeBinding |
 | `src/logger.ts` | Colored terminal output — respects `NO_COLOR` env var |
 | `src/constants.ts` | CLI name, exit codes, ANSI color codes, character constants |
-| `src/types.ts` | All TypeScript interfaces: `ParsedArgs`, `FetchConfig`, `NativeBinding`, `Logger`, QuickJS types |
-| `src/global.d.ts` | Module declarations for `qjs:std`, `qjs:os`; blocks Node.js APIs with helpful errors; declares `maybefetch` global |
+| `src/types.ts` | All TypeScript interfaces: `ParsedArgs`, `FetchConfig`, `Logger`, QuickJS types |
+| `src/qjs.d.ts` | Module declarations for `qjs:std`, `qjs:os`; blocks Node.js module imports in QuickJS scripts |
+| `src/global.d.ts` | QuickJS globals exposed to compiled scripts |
 | `src/quickjs.ts` | Re-exports all types for use as `import 'tqs/quickjs'` |
-| `src/index.ts` | Public package exports (`fetch`, `fetchAsync`, `defaultConfig`) |
+| `src/index.ts` | Public package exports (`maybeFetch`, `defaultConfig`) |
 
 ## Native code
 
@@ -45,30 +46,35 @@ The output binary has no runtime dependencies: QuickJS, maybefetch, and all JS s
 
 Two independent builds:
 
-**TypeScript build** (`bun run build:ts` via tsup):
+**TypeScript build** (`bun run build:ts`):
 - Library entry: `src/index.ts` + `src/quickjs.ts` → `dist/` (ESM + `.d.ts`)
-- CLI entry: `src/cli/index.ts` → `dist/cli/index.js` (no dts, minified)
-- `qjs:std` and `qjs:os` are marked external (provided by the QuickJS runtime)
+- CLI entry: `src/cli/index.ts` → `dist/cli/index.js` (executable Node.js script)
+- `qjs:std` and `qjs:os` are marked external for script bundles (provided by the QuickJS runtime)
 - `__VERSION__` is injected from `package.json` at build time
 
-**QuickJS binary build** (`bash scripts/build-binary.sh`):
+**QuickJS runtime build** (`bash scripts/build-binary.sh`):
 - Clones QuickJS-NG, copies maybefetch C sources
-- Appends `tqs_exe` CMake target to QuickJS's `CMakeLists.txt`
-- Compiles with cmake → `bin/tqs` (self-contained native binary)
+- Appends `tqs_runtime` CMake target to QuickJS's `CMakeLists.txt`
+- Compiles with cmake → `bin/tqs-runtime` (internal runtime, not the public `tqs` compiler CLI)
+
+**Bundled compiler backend** (`scripts/tqs-qjsc.sh`):
+- Uses staged QuickJS-NG sources from `deps/quickjs-ng` in npm packages, or `quickjs-ng` in a local checkout
+- Builds and caches a small qjsc helper from source
+- Runs qjsc with `-e` to generate C, injects `js_std_add_maybefetch(ctx)`, then compiles the final executable with libcurl
 
 ## CLI flow
 
 ```
-scriptArgs → slice(1) → parseArgs() → route:
+process.argv → slice(2) → parseArgs() → route:
   options.version  → showVersion() → exit 0
   options.help || args.length === 0 → showHelp() → exit 0
-  options.scriptFile → compileAndRun(file)
+  options.scriptFile → compile(file, outputFile?)
 ```
 
-`compileAndRun` in `src/compiler.ts`:
-1. If `.ts` or `.tqs`: `bun build --target browser --outfile <file>.js <file>`
-2. `qjsc -o <output> <file>.js`
-3. Clean up intermediate `.js` file
+`compile` in `src/compiler.ts`:
+1. If `.ts` or `.tqs`: `bun build --target browser --outfile <tmp>/<file>.js <file>`
+2. `${TQS_QJSC:-scripts/tqs-qjsc.sh} -o <output> <tmp>/<file>.js`
+3. Clean up the temporary directory
 
 ## maybefetch
 
@@ -79,9 +85,7 @@ Two execution modes:
 | **QuickJS global** | Running inside compiled binary | Calls `globalThis.maybefetch(url, ...params)` |
 | **NativeBinding** | Running in Bun/Node.js | Calls C addon via `binding.maybeFetch(url, config)` |
 
-If neither is available, `fetch()` throws `'maybefetch is not available'`.
-
-`fetchAsync` is a `Promise.resolve` wrapper over the sync `fetch` — it is not truly async.
+If the QuickJS global is missing, `maybeFetch()` throws `'maybefetch is not available'`.
 
 ## Testing
 
@@ -89,20 +93,22 @@ If neither is available, `fetch()` throws `'maybefetch is not available'`.
 |---|---|---|
 | `tests/unit/cli/args.test.ts` | `parseArgs` edge cases | `bun test` |
 | `tests/unit/src/maybefetch.test.ts` | fetch/fetchAsync with mock binding | `bun test` |
-| `tests/integration/cli.test.ts` | CLI binary — help, version, error cases | `bun test` (skips if `bin/tqs` absent) |
+| `tests/integration/cli.test.ts` | Built package CLI — help, version, error cases | `bun test` (skips if `dist/cli/index.js` absent) |
 | `tests/e2e/` | Full Docker-based end-to-end | `bash tests/e2e/runner.sh` |
 
 Run: `bun test`
 
-Integration tests auto-skip when `bin/tqs` has not been built. Build it first with `bash scripts/build-binary.sh` to enable them.
+Integration tests auto-skip when `dist/cli/index.js` has not been built. Build it first with `bun run build:ts` to enable them.
 
 ## QuickJS constraints
 
-All CLI source (`src/cli/`, `src/compiler.ts`, `src/logger.ts`) runs inside QuickJS. These files must be **sync and QJS-safe**:
+User scripts run inside QuickJS. The package CLI (`src/cli/`, `src/compiler.ts`, `src/logger.ts`) runs under Node.js/Bun and shells out to Bun and the compiler backend.
+
+QuickJS script-facing code and types must remain **sync and QJS-safe**:
 
 - No `async/await`, `Promise`, dynamic `import()`
-- No Node.js APIs — `fs`, `path`, `process`, `child_process` are blocked by `src/global.d.ts`
-- Use `qjs:std` and `qjs:os` instead (declared in `src/global.d.ts`)
+- No Node.js APIs — `fs`, `path`, `process`, `child_process` are blocked by `src/qjs.d.ts`
+- Use `qjs:std` and `qjs:os` instead
 - No `fetch`, `URL`, `TextEncoder`, `Intl`, `structuredClone`
 - No regex lookbehind (`(?<=...)`)
 
@@ -119,9 +125,9 @@ All CLI source (`src/cli/`, `src/compiler.ts`, `src/logger.ts`) runs inside Quic
 
 ## Release
 
-- Version is in `package.json` — tsup injects it as `__VERSION__` in the CLI build
+- Version is in `package.json` — Bun build injects it as `__VERSION__` in the CLI build
 - `bun run release` runs release-it: bumps version, creates GitHub release + tag
-- GitHub Actions `release.yml` triggers on `v*` tags and builds `bin/tqs-darwin-arm64`, `bin/tqs-darwin-x64`, `bin/tqs-linux-x64`
+- GitHub Actions `release.yml` triggers on `v*` tags and builds `bin/tqs-runtime-darwin-arm64`, `bin/tqs-runtime-linux-x64`
 - Pre-release checks (configured in `package.json`): `bun run lint`, `bun run build:ts`, `bun run test`
 
 ## Commands
@@ -130,8 +136,9 @@ All CLI source (`src/cli/`, `src/compiler.ts`, `src/logger.ts`) runs inside Quic
 bun install
 bun run lint              # oxlint src/
 bun run typecheck         # tsc --noEmit
-bun run build:ts          # tsup (library + CLI)
-bun run build:quickjs     # QuickJS native binary → bin/tqs
+bun run stage:quickjs     # stage pinned QuickJS-NG sources into deps/
+bun run build:ts          # Bun build + declarations
+bun run build:runtime     # QuickJS runtime → bin/tqs-runtime
 bun test                  # unit + integration tests
 bun run release           # release-it (bump version + GitHub release)
 ```

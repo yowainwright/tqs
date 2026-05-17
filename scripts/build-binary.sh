@@ -160,9 +160,9 @@ int main(int argc, char **argv)
     JSContext *ctx;
     int r;
 
-    if (argc < 2) {
-        fprintf(stderr, "Usage: tqs <script.js>\n");
-        return 1;
+    if (argc < 2 || strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-h") == 0) {
+        fprintf(stdout, "Usage: tqs-runtime <script.js>\n");
+        return argc < 2 ? 1 : 0;
     }
 
     rt = JS_NewRuntime();
@@ -209,20 +209,20 @@ EOF
 
 patch_cmakelists() {
   local cmake_file="${1:-$(quickjs_dir)/CMakeLists.txt}"
-  grep -q "tqs_exe" "$cmake_file" && return 0
+  grep -q "tqs_runtime" "$cmake_file" && return 0
   cat >> "$cmake_file" << 'EOF'
 
-# --- tqs: QuickJS with maybefetch ---
+# --- tqs-runtime: QuickJS with maybefetch ---
 find_library(CURL_LIB curl)
 find_path(CURL_INCLUDE curl/curl.h)
 if(CURL_LIB AND CURL_INCLUDE)
-    add_executable(tqs_exe tqs_main.c maybefetch.c quickjs_maybefetch.c)
-    target_include_directories(tqs_exe PRIVATE ${CURL_INCLUDE} ${CMAKE_CURRENT_SOURCE_DIR})
-    target_compile_definitions(tqs_exe PRIVATE ${qjs_defines} _GNU_SOURCE)
-    target_link_libraries(tqs_exe PRIVATE qjs qjs-libc ${CURL_LIB} m)
-    set_target_properties(tqs_exe PROPERTIES OUTPUT_NAME "tqs")
+    add_executable(tqs_runtime tqs_main.c maybefetch.c quickjs_maybefetch.c)
+    target_include_directories(tqs_runtime PRIVATE ${CURL_INCLUDE} ${CMAKE_CURRENT_SOURCE_DIR})
+    target_compile_definitions(tqs_runtime PRIVATE ${qjs_defines} _GNU_SOURCE)
+    target_link_libraries(tqs_runtime PRIVATE qjs qjs-libc ${CURL_LIB} m)
+    set_target_properties(tqs_runtime PROPERTIES OUTPUT_NAME "tqs-runtime")
 else()
-    message(WARNING "libcurl not found, skipping tqs build")
+    message(WARNING "libcurl not found, skipping tqs-runtime build")
 endif()
 EOF
 }
@@ -230,20 +230,20 @@ EOF
 cmake_configure() {
   local bd="${1:-$(build_dir)}"
   local extra_opts="${2:-${EXTRA_CMAKE_OPTS:-}}"
-  cmake "$(dirname "$bd")" -DCMAKE_BUILD_TYPE=Release $extra_opts
+  cmake "$(dirname "$bd")" -B "$bd" -DCMAKE_BUILD_TYPE=Release $extra_opts
 }
 
 cmake_build() {
   local bd="${1:-$(build_dir)}"
   local jobs="${2:-$(nproc 2>/dev/null || sysctl -n hw.ncpu)}"
-  cmake --build "$bd" --target tqs_exe -j"$jobs"
+  cmake --build "$bd" --target tqs_runtime -j"$jobs"
 }
 
 copy_binary() {
   local bd="${1:-$(build_dir)}"
   local out_dir="${2:-$(bin_dir)}"
   mkdir -p "$out_dir"
-  cp "$bd/tqs" "$out_dir/"
+  cp "$bd/tqs-runtime" "$out_dir/"
 }
 
 main() {
@@ -262,11 +262,12 @@ main() {
   write_tqs_main "$qjs_dir"
   patch_cmakelists "$qjs_dir/CMakeLists.txt"
   echo "Building with cmake..."
-  (cd "$bd" && cmake_configure "$bd" && cmake_build "$bd")
+  cmake_configure "$bd"
+  cmake_build "$bd"
   echo "Copying binary..."
   copy_binary "$bd" "$(bin_dir "$root_dir")"
-  echo "QuickJS with maybefetch built successfully!"
-  echo "Binary: $(bin_dir "$root_dir")/tqs"
+  echo "QuickJS runtime with maybefetch built successfully!"
+  echo "Runtime: $(bin_dir "$root_dir")/tqs-runtime"
 }
 
 if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then

@@ -1,18 +1,59 @@
 import { spawnSync } from "node:child_process";
-import { existsSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import {
+  chmodSync,
+  existsSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
+import { tmpdir } from "node:os";
+import * as path from "node:path";
 import { fileURLToPath } from "node:url";
 import { EXIT_FAILURE } from "./constants.js";
 import { logger } from "./logger.js";
 import { isTqsScript } from "./marker.js";
 
 const stripExtension = (filePath: string): string => filePath.replace(/\.(ts|tqs|js)$/, "");
+const QJSC_ENV_VAR = "TQS_QJSC";
 
-const toJsPath = (filePath: string): string => filePath.replace(/\.(ts|tqs)$/, ".js");
+interface CommandInvocation {
+  readonly command: string;
+  readonly args: readonly string[];
+  readonly display: string;
+}
 
 const isEnoent = (error: Error): boolean => (error as NodeJS.ErrnoException).code === "ENOENT";
 
-const exec = (args: string[]): number => {
+const toJsPath = (filePath: string, outDir: string): string =>
+  path.join(outDir, `${stripExtension(path.basename(filePath))}.js`);
+
+const bundledQjscBackend = (): string | undefined => {
+  const currentDir = path.dirname(fileURLToPath(import.meta.url));
+  const candidates = [
+    path.resolve(currentDir, "../..", "scripts", "tqs-qjsc.sh"),
+    path.resolve(currentDir, "..", "scripts", "tqs-qjsc.sh"),
+    path.resolve(process.cwd(), "scripts", "tqs-qjsc.sh"),
+  ];
+
+  return candidates.find((backend) => existsSync(backend));
+};
+
+const qjscCommand = (args: readonly string[]): CommandInvocation => {
+  const override = process.env[QJSC_ENV_VAR];
+  if (override) {
+    return { command: override, args, display: override };
+  }
+
+  const backend = bundledQjscBackend();
+  if (backend) {
+    return { command: "bash", args: [backend, ...args], display: backend };
+  }
+
+  return { command: "qjsc", args, display: "qjsc" };
+};
+
+const exec = (args: readonly string[]): number => {
   const [command, ...commandArgs] = args;
   if (!command) return EXIT_FAILURE;
   const result = spawnSync(command, commandArgs, { stdio: "inherit" });
@@ -23,40 +64,14 @@ const exec = (args: string[]): number => {
   return result.status ?? EXIT_FAILURE;
 };
 
-const packageRoot = (): string => {
-  const moduleDir = dirname(fileURLToPath(import.meta.url));
-  return (
-    [moduleDir, dirname(moduleDir), dirname(dirname(moduleDir))].find((dir) =>
-      existsSync(join(dir, "package.json")),
-    ) ?? process.cwd()
-  );
+const execInvocation = (invocation: CommandInvocation): number => {
+  const result = spawnSync(invocation.command, [...invocation.args], { stdio: "inherit" });
+  if (result.error) {
+    if (isEnoent(result.error)) logger.error(`command not found: ${invocation.command}`);
+    return EXIT_FAILURE;
+  }
+  return result.status ?? EXIT_FAILURE;
 };
-
-const quickJsSourceDir = (rootDir: string): string => join(rootDir, "deps/quickjs-ng");
-
-const quickJsSources = (sourceDir: string): readonly string[] => [
-  join(sourceDir, "quickjs-libc.c"),
-  join(sourceDir, "quickjs.c"),
-  join(sourceDir, "libregexp.c"),
-  join(sourceDir, "libunicode.c"),
-  join(sourceDir, "dtoa.c"),
-];
-
-const nativeSources = (rootDir: string): readonly string[] => [
-  join(rootDir, "native/src/maybefetch.c"),
-  join(rootDir, "native/src/quickjs_maybefetch.c"),
-];
-
-const nativeIncludeDir = (rootDir: string): string => join(rootDir, "native/include");
-
-const requiredNativeFiles = (rootDir: string, sourceDir: string): readonly string[] => [
-  ...quickJsSources(sourceDir),
-  ...nativeSources(rootDir),
-  join(nativeIncludeDir(rootDir), "maybefetch.h"),
-];
-
-const hasNativeFiles = (rootDir: string, sourceDir: string): boolean =>
-  requiredNativeFiles(rootDir, sourceDir).every((filePath) => existsSync(filePath));
 
 const hasTqsMarker = (filePath: string): boolean => {
   try {
@@ -73,10 +88,8 @@ const normalizeQuickJsImports = (filePath: string): void => {
   writeFileSync(filePath, contents);
 };
 
-const buildJs = (inputFile: string): string => {
-  const outFile = toJsPath(inputFile);
-  const lastSlash = outFile.lastIndexOf("/");
-  const outDir = lastSlash >= 0 ? outFile.slice(0, lastSlash) : ".";
+const buildJs = (inputFile: string, outDir: string): string => {
+  const outFile = toJsPath(inputFile, outDir);
   const result = exec([
     "bun",
     "build",
@@ -92,112 +105,58 @@ const buildJs = (inputFile: string): string => {
     "qjs:std",
     "--external",
     "qjs:os",
-    "--outdir",
-    outDir,
+    "--outfile",
+    outFile,
     inputFile,
   ]);
   if (result !== 0) {
-    logger.error(`build failed: ${inputFile}`);
-    process.exit(EXIT_FAILURE);
+    throw new Error(`build failed: ${inputFile}`);
   }
   normalizeQuickJsImports(outFile);
   return outFile;
 };
 
-const compileQjscSource = (jsFile: string, cFile: string): number =>
-  exec(["qjsc", "-e", "-m", "-o", cFile, jsFile]);
+const isGeneratedCSource = (filePath: string): boolean => {
+  const header = readFileSync(filePath, "utf8").slice(0, 80);
+  return header.startsWith("/* File generated automatically by");
+};
 
-const INCLUDE_ANCHOR = '#include "quickjs-libc.h"';
-const CTX_RETURN_ANCHOR = "  return ctx;\n}\n\nint main";
-
-const addMaybefetchBinding = (cFile: string): boolean => {
-  const contents = readFileSync(cFile, "utf8");
-  if (!contents.includes(INCLUDE_ANCHOR) || !contents.includes(CTX_RETURN_ANCHOR)) {
-    return false;
+const buildBinary = (jsFile: string, outputFile: string): void => {
+  const invocation = qjscCommand(["-o", outputFile, jsFile]);
+  const result = execInvocation(invocation);
+  if (result !== 0) {
+    throw new Error(`qjsc failed: ${jsFile}`);
   }
-  const patched = contents
-    .replace(
-      INCLUDE_ANCHOR,
-      `${INCLUDE_ANCHOR}\nextern void js_std_add_maybefetch(JSContext *ctx);`,
-    )
-    .replace(
-      CTX_RETURN_ANCHOR,
-      `  js_std_add_maybefetch(ctx);\n${CTX_RETURN_ANCHOR}`,
+  if (isGeneratedCSource(outputFile)) {
+    throw new Error(
+      `${invocation.display} produced C source instead of an executable. Set ${QJSC_ENV_VAR} to a qjsc-compatible backend that emits native binaries.`,
     );
-  writeFileSync(cFile, patched);
-  return true;
+  }
+  chmodSync(outputFile, 0o755);
 };
 
-const linkQjscSource = (
-  cFile: string,
-  outputFile: string,
-  rootDir: string,
-  sourceDir: string,
-): number =>
-  exec([
-    "cc",
-    "-o",
-    outputFile,
-    "-D_GNU_SOURCE",
-    cFile,
-    ...quickJsSources(sourceDir),
-    ...nativeSources(rootDir),
-    `-I${sourceDir}`,
-    `-I${nativeIncludeDir(rootDir)}`,
-    "-lm",
-    "-ldl",
-    "-pthread",
-    "-lcurl",
-  ]);
+const makeTempDir = (): string => mkdtempSync(path.join(tmpdir(), "tqs-"));
 
-const cleanupIfExists = (filePath: string): void => {
-  if (existsSync(filePath)) unlinkSync(filePath);
-};
-
-const compileQjscNgBinary = (jsFile: string, outputFile: string): number => {
-  const cFile = `${outputFile}.c`;
-  const rootDir = packageRoot();
-  const sourceDir = quickJsSourceDir(rootDir);
-  if (!hasNativeFiles(rootDir, sourceDir)) {
-    logger.error(`quickjs sources missing — run: bun run stage:quickjs`);
-    return EXIT_FAILURE;
-  }
-  const compileResult = compileQjscSource(jsFile, cFile);
-  if (compileResult !== 0) {
-    cleanupIfExists(cFile);
-    return compileResult;
-  }
-  if (!addMaybefetchBinding(cFile)) {
-    unlinkSync(cFile);
-    logger.error(`maybefetch patch failed — qjsc output format changed`);
-    return EXIT_FAILURE;
-  }
-  const linkResult = linkQjscSource(cFile, outputFile, rootDir, sourceDir);
-  unlinkSync(cFile);
-  return linkResult;
-};
-
-export const compile = (inputFile: string, outputFile?: string): void => {
-  const resolvedOutput = outputFile ?? stripExtension(inputFile);
+export const compile = (inputFile: string, outputFile = stripExtension(inputFile)): void => {
   const isTsOnly = inputFile.endsWith(".ts");
   const isTypeScript = /\.(ts|tqs)$/.test(inputFile);
 
   if (isTsOnly && !hasTqsMarker(inputFile)) {
-    logger.error(
+    throw new Error(
       `${inputFile} is missing // @tqs-script — add it to mark this file as a tqs script`,
     );
-    process.exit(EXIT_FAILURE);
   }
 
-  logger.step(`Compiling: ${inputFile} -> ${resolvedOutput}`);
+  logger.step(`Compiling: ${inputFile} -> ${outputFile}`);
 
-  const jsFile = isTypeScript ? buildJs(inputFile) : inputFile;
-  const result = compileQjscNgBinary(jsFile, resolvedOutput);
-  if (isTypeScript) cleanupIfExists(jsFile);
-  if (result !== 0) {
-    logger.error(`native link failed: ${jsFile}`);
-    process.exit(EXIT_FAILURE);
+  const tempDir = isTypeScript ? makeTempDir() : undefined;
+
+  try {
+    const jsFile = tempDir ? buildJs(inputFile, tempDir) : inputFile;
+    buildBinary(jsFile, outputFile);
+  } finally {
+    if (tempDir) rmSync(tempDir, { recursive: true, force: true });
   }
 
-  logger.success(`Built: ${resolvedOutput}`);
+  logger.success(`Built: ${outputFile}`);
 };

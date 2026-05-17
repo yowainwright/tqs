@@ -9,7 +9,9 @@
 tqs my-script.ts   # outputs ./my-script — a standalone native binary
 ```
 
-Write TypeScript. Get a tiny self-contained binary with [QuickJS-NG](https://github.com/quickjs-ng/quickjs) embedded and `maybefetch()` for HTTP. No Node.js, no V8, no runtime dependencies.
+Write TypeScript. Get a tiny self-contained binary powered by [QuickJS-NG](https://github.com/quickjs-ng/quickjs), with `maybefetch()` for HTTP. No Node.js, no V8, no runtime dependencies.
+
+`tqs` is a small wrapper around the QuickJS toolchain. The hard part is QuickJS; `tqs` adds the TypeScript-friendly compiler command, bundling, types, `maybefetch`, and checks around the generated artifact. The file it produces is the artifact: a native QuickJS executable that does not launch Node, Bun, or V8.
 
 ## Why tqs?
 
@@ -25,15 +27,15 @@ Great for typed, tested scripts that start fast and run fast — think LLM hooks
 
 **npm**
 ```bash
-npm i tqs@npm:@yowainwright/tqs
+npm i -g tqs@npm:@yowainwright/tqs
 ```
 
-**macOS**
+**Bun**
 ```bash
-brew install yowainwright/tap/tqs
+bun install -g tqs@npm:@yowainwright/tqs
 ```
 
-**Linux**
+**From source**
 ```bash
 apt install libcurl4 cmake
 git clone https://github.com/yowainwright/tqs.git
@@ -70,22 +72,28 @@ tqs my-script.ts   # creates ./my-script
 
 ## How it works
 
-```
-my-script.ts
-  → bun build (bundles TypeScript to self-contained JS)
-  → qjsc (compiles JS + QuickJS runtime + maybefetch into a native binary)
-  → ./my-script
+Install `tqs`, then use it to build your own binary artifact.
+
+```mermaid
+flowchart LR
+  install["Install tqs"] --> tqs["tqs<br/>compiler artifact"]
+  script["my-script.ts"] --> tqs
+  tqs --> binary["my-script<br/>native QuickJS binary"]
+  binary --> run["./my-script"]
 ```
 
-The output binary embeds the QuickJS runtime and all JavaScript source inline — no external files needed at runtime.
+`tqs` bundles your script, hands it to QuickJS-NG, adds `maybefetch`, and writes a native executable. The output binary embeds the QuickJS runtime and all JavaScript source inline. It is not a JS launcher script. Native system libraries such as libcurl may still be dynamically linked by the platform toolchain.
 
 ## CLI
 
 ```bash
 tqs <script>        # Compile TypeScript or JavaScript to a native binary
+tqs <script> -o app # Set output path
 tqs --help          # Show help
 tqs --version       # Show version
 ```
+
+`tqs` uses the package-local QuickJS/maybefetch backend by default. Set `TQS_QJSC=/path/to/backend` only when you need to force a custom qjsc-compatible compiler backend.
 
 Supported inputs: `.tqs`, `.js`. For `.ts` files, add `// @tqs-script` at the top to mark them as QuickJS scripts:
 
@@ -274,6 +282,15 @@ Typed wrapper around the `maybefetch` global. Only available in compiled QuickJS
 
 ## Resource Usage
 
+Run the local benchmark helper from a repo checkout:
+
+```bash
+bun run bench
+BENCH_RUNS=200 bun run bench
+```
+
+It compiles a hello-world script with `tqs`, reports the generated binary size and type, then measures startup and max RSS against the local `node` command when available.
+
 | Metric | tqs | Node.js 25 |
 |--------|-----|------------|
 | Startup | <1ms | ~40ms |
@@ -287,10 +304,12 @@ Typed wrapper around the `maybefetch` global. Only available in compiled QuickJS
 
 ```bash
 bun install
-bun run build:quickjs   # Build QuickJS-NG + maybefetch + tqs binary
+bun run stage:quickjs   # Stage pinned QuickJS-NG sources into deps/
 bun run build:ts        # Build TypeScript
+bun run build:runtime   # Optional: build internal QuickJS runtime helper
 bun run lint            # Lint
 bun run typecheck       # Type check
+bun run bench           # Run local artifact benchmarks
 bun test                # Run tests
 ```
 
