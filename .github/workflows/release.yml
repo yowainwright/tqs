@@ -146,7 +146,7 @@ jobs:
 
       - name: Compute SHA256 hashes
         working-directory: /tmp/release
-        run: sha256sum tqs-runtime-darwin-arm64 tqs-runtime-linux-x64 > checksums.txt
+        run: sha256sum tqs-runtime-* > checksums.txt
 
       - name: Upload checksums
         run: gh release upload ${{ github.ref_name }} /tmp/release/checksums.txt --clobber
@@ -160,19 +160,23 @@ jobs:
     permissions:
       contents: read
     steps:
-      - name: Download release assets
+      - name: Download checksums
         run: |
           gh release download "${{ github.ref_name }}" \
             --repo "${{ github.repository }}" \
-            --pattern 'tqs-runtime-*' \
+            --pattern 'checksums.txt' \
             --dir /tmp/release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Compute SHA256 hashes
+      - name: Read SHA256 hashes
         run: |
-          echo "SHA_DARWIN_ARM64=$(sha256sum /tmp/release/tqs-runtime-darwin-arm64 | awk '{print $1}')" >> "$GITHUB_ENV"
-          echo "SHA_LINUX_X64=$(sha256sum /tmp/release/tqs-runtime-linux-x64 | awk '{print $1}')" >> "$GITHUB_ENV"
+          SHA_DARWIN_ARM64="$(awk '$2 == "tqs-runtime-darwin-arm64" {print $1}' /tmp/release/checksums.txt)"
+          SHA_LINUX_X64="$(awk '$2 == "tqs-runtime-linux-x64" {print $1}' /tmp/release/checksums.txt)"
+          test -n "$SHA_DARWIN_ARM64"
+          test -n "$SHA_LINUX_X64"
+          echo "SHA_DARWIN_ARM64=$SHA_DARWIN_ARM64" >> "$GITHUB_ENV"
+          echo "SHA_LINUX_X64=$SHA_LINUX_X64" >> "$GITHUB_ENV"
 
       - name: Checkout homebrew tap
         uses: actions/checkout@v4
@@ -187,8 +191,8 @@ jobs:
           VERSION_NUM="${VERSION#v}"
           cd homebrew-tap
           sed -i "s/  version \".*\"/  version \"$VERSION_NUM\"/" Formula/tqs.rb
-          sed -i "s/tqs-darwin-arm64/tqs-runtime-darwin-arm64/g" Formula/tqs.rb
-          sed -i "s/tqs-linux-x64/tqs-runtime-linux-x64/g" Formula/tqs.rb
+          sed -i 's|url "https://github.com/yowainwright/tqs/releases/download/v#{version}/tqs[^"]*darwin-arm64"|url "https://github.com/yowainwright/tqs/releases/download/v#{version}/tqs-runtime-darwin-arm64"|' Formula/tqs.rb
+          sed -i 's|url "https://github.com/yowainwright/tqs/releases/download/v#{version}/tqs[^"]*linux-x64"|url "https://github.com/yowainwright/tqs/releases/download/v#{version}/tqs-runtime-linux-x64"|' Formula/tqs.rb
           sed -i "/tqs-runtime-darwin-arm64\"/{n;s/sha256 \"[^\"]*\"/sha256 \"$SHA_DARWIN_ARM64\"/}" Formula/tqs.rb
           sed -i "/tqs-runtime-linux-x64\"/{n;s/sha256 \"[^\"]*\"/sha256 \"$SHA_LINUX_X64\"/}" Formula/tqs.rb
 
