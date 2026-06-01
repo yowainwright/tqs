@@ -31,7 +31,6 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: '24'
-          registry-url: 'https://registry.npmjs.org'
 
       - name: Install dependencies
         run: bun install --config=bunfig.ci.toml
@@ -191,10 +190,8 @@ jobs:
           VERSION_NUM="${VERSION#v}"
           cd homebrew-tap
           sed -i "s/  version \".*\"/  version \"$VERSION_NUM\"/" Formula/tqs.rb
-          sed -i 's|url "https://github.com/yowainwright/tqs/releases/download/v#{version}/tqs[^"]*darwin-arm64"|url "https://github.com/yowainwright/tqs/releases/download/v#{version}/tqs-runtime-darwin-arm64"|' Formula/tqs.rb
-          sed -i 's|url "https://github.com/yowainwright/tqs/releases/download/v#{version}/tqs[^"]*linux-x64"|url "https://github.com/yowainwright/tqs/releases/download/v#{version}/tqs-runtime-linux-x64"|' Formula/tqs.rb
-          sed -i "/tqs-runtime-darwin-arm64\"/{n;s/sha256 \"[^\"]*\"/sha256 \"$SHA_DARWIN_ARM64\"/}" Formula/tqs.rb
-          sed -i "/tqs-runtime-linux-x64\"/{n;s/sha256 \"[^\"]*\"/sha256 \"$SHA_LINUX_X64\"/}" Formula/tqs.rb
+          perl -0pi -e 's|url "https://github\.com/yowainwright/tqs/releases/download/v#\{version\}/[^"]*"\n      sha256 "[^"]*" # darwin-arm64|url "https://github.com/yowainwright/tqs/releases/download/v#{version}/tqs-runtime-darwin-arm64"\n      sha256 "$ENV{SHA_DARWIN_ARM64}" # darwin-arm64|' Formula/tqs.rb
+          perl -0pi -e 's|url "https://github\.com/yowainwright/tqs/releases/download/v#\{version\}/[^"]*"\n    sha256 "[^"]*" # linux-x64|url "https://github.com/yowainwright/tqs/releases/download/v#{version}/tqs-runtime-linux-x64"\n    sha256 "$ENV{SHA_LINUX_X64}" # linux-x64|' Formula/tqs.rb
 
       - name: Commit and push
         run: |
