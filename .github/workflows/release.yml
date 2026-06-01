@@ -193,6 +193,14 @@ jobs:
           sed -i "s/  version \".*\"/  version \"$VERSION_NUM\"/" Formula/tqs.rb
           perl -0pi -e 's|url "https://github\.com/yowainwright/tqs/releases/download/v#\{version\}/[^"]*"\n      sha256 "[^"]*" # darwin-arm64|url "https://github.com/yowainwright/tqs/releases/download/v#{version}/tqs-runtime-darwin-arm64"\n      sha256 "$ENV{SHA_DARWIN_ARM64}" # darwin-arm64|' Formula/tqs.rb
           perl -0pi -e 's|url "https://github\.com/yowainwright/tqs/releases/download/v#\{version\}/[^"]*"\n    sha256 "[^"]*" # linux-x64|url "https://github.com/yowainwright/tqs/releases/download/v#{version}/tqs-runtime-linux-x64"\n    sha256 "$ENV{SHA_LINUX_X64}" # linux-x64|' Formula/tqs.rb
+          grep -Fq "tqs-runtime-darwin-arm64" Formula/tqs.rb
+          grep -Fq "tqs-runtime-linux-x64" Formula/tqs.rb
+          grep -Fq "$SHA_DARWIN_ARM64" Formula/tqs.rb
+          grep -Fq "$SHA_LINUX_X64" Formula/tqs.rb
+          if git diff --quiet -- Formula/tqs.rb; then
+            echo "Formula/tqs.rb was not updated."
+            exit 1
+          fi
 
       - name: Commit and push
         run: |
