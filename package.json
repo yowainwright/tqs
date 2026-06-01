@@ -4,12 +4,14 @@
   "description": "Compile TypeScript to fast, small standalone native binaries via QuickJS",
   "type": "module",
   "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "bin": {
     "tqs": "./dist/cli/index.js"
   },
   "scripts": {
-    "build": "bun run build:quickjs && bun run build:ts",
-    "build:quickjs": "bash scripts/build-binary.sh",
+    "build": "bun run build:ts",
+    "build:runtime": "bash scripts/build-binary.sh",
+    "build:quickjs": "bun run build:runtime",
     "build:ts": "bash scripts/build-ts.sh",
     "clean:generated": "bash scripts/clean.sh",
     "setup": "bash scripts/setup.sh",
@@ -19,8 +21,9 @@
     "format:fix": "oxfmt --write src",
     "lint": "oxlint src",
     "lint:fix": "oxlint --fix src",
+    "bench": "bash scripts/benchmark.sh",
     "smoke:pack": "bash scripts/verify.sh",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "bunx --bun tsc --noEmit",
     "test": "PATH=$PWD/bin:$PATH bun test",
     "test:sh": "bash scripts/common_test.sh && bash scripts/clean_test.sh && bash scripts/stage-quickjs_test.sh && bash scripts/setup_test.sh && bash scripts/build-ts_test.sh && bash scripts/build-binary_test.sh && bash scripts/verify_test.sh",
     "prepare": "bash scripts/setup.sh && bun run build:ts",
@@ -62,6 +65,7 @@
   "peerDependencies": {},
   "files": [
     "dist/",
+    "scripts/tqs-qjsc.sh",
     "src/types.ts",
     "native/include/",
     "native/src/",

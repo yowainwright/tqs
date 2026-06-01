@@ -31,13 +31,11 @@ jobs:
       - name: Stage QuickJS Sources
         run: bun run stage:quickjs
 
-      - name: Build qjsc
-        run: |
-          bash scripts/build-qjsc.sh
-          echo "$GITHUB_WORKSPACE/bin" >> $GITHUB_PATH
-
       - name: Type check
         run: bun run typecheck
+
+      - name: Build TypeScript
+        run: bun run build:ts
 
       - name: Test
         run: bun run test
@@ -45,7 +43,7 @@ jobs:
       - name: Smoke test packed artifact
         run: bun run smoke:pack
 
-  build-native-linux:
+  build-runtime-linux:
     runs-on: ubuntu-latest
     needs: [test]
 
@@ -56,10 +54,13 @@ jobs:
       - name: Install system dependencies
         run: sudo apt-get update && sudo apt-get install -y libcurl4-openssl-dev cmake
 
-      - name: Build native binary
+      - name: Build QuickJS runtime
         run: bash scripts/build-binary.sh
 
-  build-native-macos:
+      - name: Smoke QuickJS runtime
+        run: bin/tqs-runtime --help
+
+  build-runtime-macos:
     runs-on: macos-latest
     needs: [test]
 
@@ -70,7 +71,10 @@ jobs:
       - name: Install system dependencies
         run: brew install curl cmake
 
-      - name: Build native binary
+      - name: Build QuickJS runtime
         run: |
           export EXTRA_CMAKE_OPTS="-DCMAKE_PREFIX_PATH=$(brew --prefix curl)"
           bash scripts/build-binary.sh
+
+      - name: Smoke QuickJS runtime
+        run: bin/tqs-runtime --help

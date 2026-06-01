@@ -80,8 +80,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  build:
-    name: Build ${{ matrix.target }}
+  build-runtime:
+    name: Build runtime ${{ matrix.target }}
     needs: create-release
     strategy:
       matrix:
@@ -106,7 +106,7 @@ jobs:
         if: runner.os == 'macOS'
         run: brew install curl cmake
 
-      - name: Build QuickJS binary
+      - name: Build QuickJS runtime
         shell: bash
         run: |
           if [[ "$RUNNER_OS" == "macOS" ]]; then
@@ -115,22 +115,22 @@ jobs:
           fi
           bash scripts/build-binary.sh
 
-      - name: Stage binary
-        run: cp bin/tqs bin/tqs-${{ matrix.target }}
+      - name: Stage runtime
+        run: cp bin/tqs-runtime bin/tqs-runtime-${{ matrix.target }}
 
       - name: Attest binary
         uses: actions/attest@v4
         with:
-          subject-path: bin/tqs-${{ matrix.target }}
+          subject-path: bin/tqs-runtime-${{ matrix.target }}
 
       - name: Upload to release
-        run: gh release upload ${{ github.ref_name }} bin/tqs-${{ matrix.target }} --clobber
+        run: gh release upload ${{ github.ref_name }} bin/tqs-runtime-${{ matrix.target }} --clobber
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   checksums:
     name: Publish checksums
-    needs: build
+    needs: build-runtime
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -139,14 +139,14 @@ jobs:
         run: |
           gh release download "${{ github.ref_name }}" \
             --repo "${{ github.repository }}" \
-            --pattern 'tqs-*' \
+            --pattern 'tqs-runtime-*' \
             --dir /tmp/release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Compute SHA256 hashes
         working-directory: /tmp/release
-        run: sha256sum tqs-darwin-arm64 tqs-linux-x64 > checksums.txt
+        run: sha256sum tqs-runtime-darwin-arm64 tqs-runtime-linux-x64 > checksums.txt
 
       - name: Upload checksums
         run: gh release upload ${{ github.ref_name }} /tmp/release/checksums.txt --clobber
@@ -164,15 +164,15 @@ jobs:
         run: |
           gh release download "${{ github.ref_name }}" \
             --repo "${{ github.repository }}" \
-            --pattern 'tqs-*' \
+            --pattern 'tqs-runtime-*' \
             --dir /tmp/release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Compute SHA256 hashes
         run: |
-          echo "SHA_DARWIN_ARM64=$(sha256sum /tmp/release/tqs-darwin-arm64 | awk '{print $1}')" >> "$GITHUB_ENV"
-          echo "SHA_LINUX_X64=$(sha256sum /tmp/release/tqs-linux-x64 | awk '{print $1}')" >> "$GITHUB_ENV"
+          echo "SHA_DARWIN_ARM64=$(sha256sum /tmp/release/tqs-runtime-darwin-arm64 | awk '{print $1}')" >> "$GITHUB_ENV"
+          echo "SHA_LINUX_X64=$(sha256sum /tmp/release/tqs-runtime-linux-x64 | awk '{print $1}')" >> "$GITHUB_ENV"
 
       - name: Checkout homebrew tap
         uses: actions/checkout@v4
@@ -187,8 +187,10 @@ jobs:
           VERSION_NUM="${VERSION#v}"
           cd homebrew-tap
           sed -i "s/  version \".*\"/  version \"$VERSION_NUM\"/" Formula/tqs.rb
-          sed -i "/tqs-darwin-arm64\"/{n;s/sha256 \"[^\"]*\"/sha256 \"$SHA_DARWIN_ARM64\"/}" Formula/tqs.rb
-          sed -i "/tqs-linux-x64\"/{n;s/sha256 \"[^\"]*\"/sha256 \"$SHA_LINUX_X64\"/}" Formula/tqs.rb
+          sed -i "s/tqs-darwin-arm64/tqs-runtime-darwin-arm64/g" Formula/tqs.rb
+          sed -i "s/tqs-linux-x64/tqs-runtime-linux-x64/g" Formula/tqs.rb
+          sed -i "/tqs-runtime-darwin-arm64\"/{n;s/sha256 \"[^\"]*\"/sha256 \"$SHA_DARWIN_ARM64\"/}" Formula/tqs.rb
+          sed -i "/tqs-runtime-linux-x64\"/{n;s/sha256 \"[^\"]*\"/sha256 \"$SHA_LINUX_X64\"/}" Formula/tqs.rb
 
       - name: Commit and push
         run: |

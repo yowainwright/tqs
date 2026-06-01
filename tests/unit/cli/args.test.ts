@@ -40,6 +40,24 @@ describe('parseArgs', () => {
     expect(result.version).toBe(true);
   });
 
+  it('should parse -o output path', () => {
+    const result = parseArgs(['test.tqs', '-o', 'bin/test']);
+    expect(result.scriptFile).toBe('test.tqs');
+    expect(result.outputFile).toBe('bin/test');
+  });
+
+  it('should parse --output output path', () => {
+    const result = parseArgs(['test.tqs', '--output', 'bin/test']);
+    expect(result.scriptFile).toBe('test.tqs');
+    expect(result.outputFile).toBe('bin/test');
+  });
+
+  it('should parse --output= output path', () => {
+    const result = parseArgs(['test.tqs', '--output=bin/test']);
+    expect(result.scriptFile).toBe('test.tqs');
+    expect(result.outputFile).toBe('bin/test');
+  });
+
   it('should return defaults for empty args', () => {
     const result = parseArgs([]);
     expect(result.help).toBe(false);
