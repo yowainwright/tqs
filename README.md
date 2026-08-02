@@ -1,7 +1,7 @@
 # tqs
 
 > [!NOTE]
-> July 2025, I recommend using [scriptc](https://github.com/vercel-labs/scriptc) or a similar tool.
+> July 2026, I recommend using [scriptc](https://github.com/vercel-labs/scriptc) or a similar tool.
 > It compiles supported TypeScript to native code and checks it with TypeScript itself.
 > It also supports async code, Node APIs, servers, and npm dependencies.
 
