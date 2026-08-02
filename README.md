@@ -1,5 +1,21 @@
 # tqs
 
+> [!NOTE]
+> July 2026, I recommend using [scriptc](https://github.com/vercel-labs/scriptc) or a similar tool.
+> It compiles supported TypeScript to native code and checks it with TypeScript itself.
+> It also supports async code, Node APIs, servers, and npm dependencies.
+
+In a local hello-world comparison, scriptc produced a smaller binary and started faster than `tqs`.
+`tqs` was a great learning project, but I no longer recommend it for new work.
+
+| Project | Best fit | Advantage over `tqs` |
+|---|---|---|
+| [scriptc](https://github.com/vercel-labs/scriptc) | Native CLIs and services | Native code, type checking, async, Node APIs, and npm support |
+| [Perry](https://github.com/PerryTS/perry) | Native applications | Desktop and mobile UI, many targets, threads, and a larger native runtime |
+| [txiki.js](https://github.com/saghul/txiki.js) | A compact JavaScript runtime | Async I/O, Web APIs, sockets, workers, SQLite, FFI, and executable packaging |
+
+---
+
 [![CI](https://github.com/yowainwright/tqs/actions/workflows/ci.yml/badge.svg)](https://github.com/yowainwright/tqs/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
@@ -9,7 +25,7 @@
 tqs my-script.ts   # outputs ./my-script — a standalone native binary
 ```
 
-Write TypeScript. Get a tiny self-contained binary powered by [QuickJS-NG](https://github.com/quickjs-ng/quickjs), with `maybefetch()` for HTTP. No Node.js, no V8, no runtime dependencies.
+Write TypeScript. Get a tiny self-contained binary powered by [QuickJS-NG](https://github.com/quickjs-ng/quickjs), with `maybefetch()` for HTTP. No Node.js, Bun, or V8 is needed at runtime. Native libraries such as libcurl may still be dynamically linked.
 
 `tqs` is a small wrapper around the QuickJS toolchain. The hard part is QuickJS; `tqs` adds the TypeScript-friendly compiler command, bundling, types, `maybefetch`, and checks around the generated artifact. The file it produces is the artifact: a native QuickJS executable that does not launch Node, Bun, or V8.
 
@@ -21,7 +37,7 @@ Great for typed, tested scripts that start fast and run fast — think LLM hooks
 - **Built-in HTTP**: `maybefetch()` provides fetch with retry, backoff, and timeout — zero dependencies; synchronous but fast
 - **Small by default**: ~1MB binary with no build flags or tuning — smaller than a stripped Go or Rust binary with HTTP
 - **Fast startup**: <1ms cold start vs ~40ms for Node.js
-- **Type-safe**: Full TypeScript support with types for `qjs:std`, `qjs:os`, and `maybefetch`
+- **TypeScript-friendly**: Bun strips and bundles TypeScript, with editor types for `qjs:std`, `qjs:os`, and `maybefetch`; run `tsc` separately for type checking
 
 ## Installation
 
