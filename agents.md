@@ -126,8 +126,8 @@ QuickJS script-facing code and types must remain **sync and QJS-safe**:
 ## Release
 
 - Version is in `package.json` — Bun build injects it as `__VERSION__` in the CLI build
-- `bun run release` runs release-it: bumps version, creates GitHub release + tag
-- GitHub Actions `release.yml` triggers on `v*` tags and builds `bin/tqs-runtime-darwin-arm64`, `bin/tqs-runtime-linux-x64`
+- `bun run release` runs release-it: bumps version, changelog, release commit, and tag
+- GitHub Actions `release.yml` triggers on `v*` tags, publishes npm with trusted publishing, creates the GitHub release, uploads `tqs-runtime-*` assets, publishes checksums, attests runtime binaries, and updates Homebrew
 - Pre-release checks (configured in `package.json`): `bun run lint`, `bun run build:ts`, `bun run test`
 
 ## Commands
@@ -140,7 +140,7 @@ bun run stage:quickjs     # stage pinned QuickJS-NG sources into deps/
 bun run build:ts          # Bun build + declarations
 bun run build:runtime     # QuickJS runtime → bin/tqs-runtime
 bun test                  # unit + integration tests
-bun run release           # release-it (bump version + GitHub release)
+bun run release           # release-it (bump version + push tag)
 ```
 
 ## Links
@@ -148,4 +148,4 @@ bun run release           # release-it (bump version + GitHub release)
 - [QuickJS-NG](https://github.com/quickjs-ng/quickjs)
 - [QuickJS-NG Docs](https://quickjs-ng.github.io/quickjs/)
 - [Bun Test](https://bun.sh/docs/cli/test)
-- [tsup](https://tsup.egoist.dev/)
+- [Bun Build](https://bun.sh/docs/bundler)

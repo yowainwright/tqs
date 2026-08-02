@@ -329,6 +329,29 @@ bun run bench           # Run local artifact benchmarks
 bun test                # Run tests
 ```
 
+## Release
+
+Releases are manually versioned with `release-it`, then published by GitHub Actions from the pushed tag:
+
+```bash
+bun run release
+```
+
+`release-it` updates the version, changelog, release commit, and `v*` tag. The `Release` workflow then publishes npm with trusted publishing, creates the GitHub release, uploads `tqs-runtime-*` runtime binaries, publishes `checksums.txt`, attests the binaries, and updates the Homebrew tap.
+
+Maintainer setup:
+
+- Configure npm trusted publishing for package `@yowainwright/tqs` with GitHub repository `yowainwright/tqs` and workflow `.github/workflows/release.yml`.
+- Add `HOMEBREW_TAP_TOKEN` as a GitHub Actions secret with write access to `yowainwright/homebrew-tap`.
+
+Users can verify release artifacts:
+
+```bash
+npm audit signatures
+gh attestation verify ./tqs-runtime-darwin-arm64 -R yowainwright/tqs
+shasum -a 256 -c checksums.txt
+```
+
 ## Comparison
 
 ### vs JS/TS runtimes
